@@ -404,3 +404,10 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Private Stuff
+docs-private/
+.github/
+
+# Virtual Environments - venv
+.venv/
