@@ -41,9 +41,10 @@ Esta estructura facilita el mantenimiento, la escalabilidad y el cumplimiento de
 
 ## Objetivo de los archivos principales
 
-| Archivo/Carpeta                        | Descripción                                                                                 |
+| Archivo/Carpeta                        | Descripción                                                                                |
 |----------------------------------------|--------------------------------------------------------------------------------------------|
 | app.py                                 | Punto de entrada principal de la app Streamlit. Inicializa la navegación multipágina.      |
+| pages/00_Home.py                       | Página de inicio de la aplicación.                                                         |
 | pages/01_Cargar_Datos.py               | Página para cargar datos desde CSV o Snowflake y mostrar vista previa.                     |
 | pages/02_Validar_Datos.py              | Página para validar estructura, tipos y calidad de los datos cargados.                     |
 | pages/03_Transformaciones.py           | Página para aplicar transformaciones (normalización, imputación, etc.) a los datos.        |
