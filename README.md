@@ -5,25 +5,29 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 ## Estructura del Proyecto
 
 ```text
-├── app.py                  # Punto de entrada principal de la app Streamlit
+├── app.py                  # Punto de entrada principal de la app Streamlit y la navegación multipágina
 ├── requirements.txt        # Dependencias del proyecto
 ├── README.md               # Este archivo
 ├── pages/                  # Páginas multipágina de Streamlit (cada funcionalidad principal)
-│   ├── 01_Cargar_Datos.py
-│   ├── 02_Validar_Datos.py
-│   ├── 03_Transformaciones.py
-│   ├── 04_Entrenar_Modelos.py
-│   ├── 05_Evaluar_Modelos.py
-│   ├── 06_Recomendar_Modelo.py
-│   ├── 07_Reporte.py
-│   └── 08_Dashboard.py
+│   ├── Datos/
+│   │   ├── 01_Cargar_Datos.py
+│   │   ├── 02_Validar_Datos.py
+│   │   └── 03_Transformaciones.py
+│   ├── Machine Learning/
+│   │   ├── 04_Entrenar_Modelos.py
+│   │   ├── 05_Evaluar_Modelos.py
+│   │   └── 06_Recomendar_Modelo.py
+│   └── Reportes/
+│       ├── 07_Reporte.py
+│       └── 08_Dashboard.py
 ├── src/                    # Código fuente modularizado
 │   ├── audit/              # Auditoría y logging
 │   │   └── logger.py
 │   ├── datos/              # Carga, limpieza y transformación de datos
 │   │   ├── cargador.py
 │   │   ├── limpiador.py
-│   │   └── transformador.py
+│   │   ├── transformador.py
+│   │   └── mock_db.py
 │   ├── modelos/            # Entrenamiento, evaluación y recomendación de modelos ML
 │   │   ├── entrenador.py
 │   │   ├── evaluador.py
@@ -34,10 +38,35 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 │       └── autenticador.py
 ```
 
-- Las páginas en `pages/` definen la navegación principal de la app (multipágina).
+- Las páginas en `pages/` están organizadas en subcarpetas por dominio funcional: Datos, Machine Learning y Reportes.
+- El archivo `app.py` implementa la navegación multipágina y el control de acceso (login/logout) usando `st.Page` y `st.navigation`.
 - El código fuente en `src/` está organizado por dominio: datos, modelos, reportes, seguridad y auditoría.
 
-Esta estructura facilita el mantenimiento, la escalabilidad y el cumplimiento de buenas prácticas para aplicaciones empresariales de análisis de datos.
+## app.py
+
+`app.py` es el punto de entrada de la aplicación y define:
+
+- La configuración global de Streamlit (`st.set_page_config`).
+- El control de sesión para login/logout.
+- La navegación multipágina agrupada por secciones, usando `st.Page` y `st.navigation`.
+- El acceso a las páginas está restringido según el estado de login del usuario.
+
+Ejemplo de navegación:
+
+```python
+if st.session_state.logged_in:
+    pg = st.navigation({
+        "Cuenta": [pagina_deslogueo],
+        "Datos": [cargar_datos, validar_datos, transformaciones],
+        "Machine Learning": [entrenar_modelos, evaluar_modelos, recomendar_modelo],
+        "Reportes & Dashboards": [reporte, dashboard]
+    })
+else:
+    pg = st.navigation([pagina_logueo])
+pg.run()
+```
+
+Esto permite una experiencia de usuario moderna, segura y fácil de mantener, alineada con las mejores prácticas de Streamlit.
 
 ## Objetivo de los archivos principales
 
@@ -56,9 +85,61 @@ Esta estructura facilita el mantenimiento, la escalabilidad y el cumplimiento de
 | src/datos/cargador.py                  | Funciones para cargar datos desde CSV o Snowflake, validando esquema y conexión.           |
 | src/datos/limpiador.py                 | Funciones para detectar y limpiar duplicados, valores nulos y problemas de calidad.        |
 | src/datos/transformador.py             | Funciones para aplicar transformaciones y revertirlas si es necesario.                     |
+| src/datos/mock_db.py                   | Inicializa la base de datos SQLite y crea información de ejemplo.                          |
 | src/modelos/entrenador.py              | Lógica para entrenar modelos de ML y separar conjuntos de entrenamiento/prueba.            |
 | src/modelos/evaluador.py               | Funciones para evaluar modelos y calcular métricas clave (accuracy, RMSE, F1, etc.).       |
 | src/modelos/recomendador.py            | Algoritmo para recomendar el mejor modelo según los resultados obtenidos.                  |
 | src/reportes/generador.py              | Generación de reportes PDF/CSV con resumen de análisis, transformaciones y modelos.        |
 | src/seguridad/autenticador.py          | Integración SSO, control de roles y validación de permisos de usuario.                     |
 | src/audit/logger.py                    | Registro de logs de auditoría: carga, transformación, entrenamiento, exportación, etc.     |
+
+## Uso de la base de datos mock (SQLite)
+
+### ¿Por qué usar una base de datos mock?
+
+Durante el desarrollo y pruebas, es recomendable utilizar una base de datos local y liviana (mock) en vez de conectarse directamente a Snowflake. Esto permite:
+
+- Desarrollar y testear sin depender de la infraestructura de la nube.
+- Evitar costos y riesgos de modificar datos reales.
+- Simular distintos escenarios y poblar datos de ejemplo fácilmente.
+- Ejecutar pruebas automáticas y reproducibles.
+
+En producción, la aplicación debe conectarse a Snowflake para acceder a los datos reales y cumplir con los requisitos de seguridad y auditoría.
+
+### Configuración y uso de la base de datos mock
+
+1. **Creación de la base de datos mock**
+
+   Ejecuta el script de inicialización para crear la base de datos SQLite y las tablas de ejemplo:
+
+   ```bash
+   python src/datos/mock_db.py
+   ```
+
+   Esto generará un archivo `analitica_farma.db` en el directorio raíz o donde lo especifiques.
+
+2. **Uso en la aplicación**
+
+   La app puede ser configurada para usar la base de datos mock en modo desarrollo. Simplemente asegúrate de que el archivo `analitica_farma.db` exista y que la lógica de carga de datos apunte a este archivo cuando corresponda.
+
+3. **Cambio a Snowflake en producción**
+
+   Para producción, configura las variables de entorno y credenciales para conectar a Snowflake. La lógica de la app debe permitir seleccionar la fuente de datos (mock o real) según el entorno.
+
+### Ejemplo de conexión a la base de datos mock en Python
+
+```python
+import sqlite3
+conn = sqlite3.connect("analitica_farma.db")
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM datasets")
+resultados = cursor.fetchall()
+conn.close()
+```
+
+### Consideraciones
+
+- No ejecutes el script de inicialización cada vez que inicies la app, solo cuando necesites crear o reinicializar la base de datos.
+- El script inserta automáticamente un usuario de ejemplo en la tabla 'usuarios' si está vacía, para facilitar pruebas y acceso inicial.
+- Puedes modificar el script para agregar o poblar más tablas según tus necesidades de desarrollo.
+- En producción, nunca uses la base de datos mock para análisis reales.

@@ -1,0 +1,14 @@
+# Requerimientos principales para analitica-farma
+streamlit>=1.30.0
+pandas>=2.2.0
+scikit-learn>=1.4.0
+lazypredict>=0.2.12
+snowflake-connector-python>=3.6.0
+sqlalchemy>=2.0.0
+python-dotenv>=1.0.0
+reportlab>=4.0.0
+PyPDF2>=3.0.0
+# Seguridad y autenticación (SSO, opcional)
+python-jose[cryptography]>=3.3.0
+# Logging
+loguru>=0.7.0

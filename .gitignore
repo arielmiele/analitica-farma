@@ -411,3 +411,6 @@ docs-private/
 
 # Virtual Environments - venv
 .venv/
+
+# Ignorar archivo de configuración de markdownlint
+.markdownlint.json
