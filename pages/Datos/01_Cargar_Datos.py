@@ -15,6 +15,7 @@ from src.datos.cargador import (
     listar_datasets_disponibles,
     obtener_dataset
 )
+from src.state.session_manager import SessionManager
 
 # Configurar el logger con el ID de usuario de la sesión
 usuario_id = st.session_state.get("usuario_id", 1)
@@ -330,11 +331,12 @@ elif st.session_state.paso_carga == 1:
                             st.info("Validación básica completada. Los datos parecen correctos.")
                         
                         log_operation(logger, "VALIDACIÓN", f"Validación básica completada para: {st.session_state.filename}", 
-                                    id_usuario=usuario_id)
-                            
-                    # Registrar acción de usuario para auditoría
+                                    id_usuario=usuario_id)                    # Registrar acción de usuario para auditoría
                     log_audit(usuario_id, "CARGA_DATOS", st.session_state.filename, 
                             f"Filas: {df.shape[0]}, Columnas: {df.shape[1]}")
+                    
+                    # Marcar etapa como completada en el estado de sesión usando SessionManager
+                    SessionManager.update_progress("carga_datos", True)
                     
                     # Avanzar al paso de visualización
                     st.session_state.paso_carga = 2

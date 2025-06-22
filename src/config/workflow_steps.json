@@ -1,0 +1,46 @@
+{
+    "etapas": [
+        {
+            "id": "carga_datos",
+            "nombre": "Carga de datos",
+            "icono": "1️⃣",
+            "pagina": "pages/Datos/01_Cargar_Datos.py"
+        },
+        {
+            "id": "configuracion",
+            "nombre": "Configuración",
+            "icono": "2️⃣",
+            "pagina": "pages/Datos/02_Configurar_Datos.py"
+        },
+        {
+            "id": "validacion",
+            "nombre": "Validación",
+            "icono": "3️⃣",
+            "pagina": "pages/Datos/03_Validar_Datos.py"
+        },
+        {
+            "id": "transformacion",
+            "nombre": "Transformaciones",
+            "icono": "4️⃣",
+            "pagina": "pages/Datos/04_Transformar_Datos.py"
+        },
+        {
+            "id": "entrenamiento",
+            "nombre": "Entrenamiento",
+            "icono": "5️⃣",
+            "pagina": "pages/Machine Learning/04_Entrenar_Modelos.py"
+        },
+        {
+            "id": "evaluacion",
+            "nombre": "Evaluación",
+            "icono": "6️⃣",
+            "pagina": "pages/Machine Learning/05_Evaluar_Modelos.py"
+        },
+        {
+            "id": "recomendacion",
+            "nombre": "Recomendación",
+            "icono": "7️⃣",
+            "pagina": "pages/Machine Learning/06_Recomendar_Modelo.py"
+        }
+    ]
+}

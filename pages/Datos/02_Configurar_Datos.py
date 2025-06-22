@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 import os
 import sys
 from datetime import datetime
@@ -11,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from src.audit.logger import setup_logger, log_operation, log_audit
 from src.datos.validador import validar_estructura, validar_variable_objetivo
 from src.modelos.configurador import guardar_configuracion_modelo
+from src.state.session_manager import SessionManager
 
 # Configurar el logger
 usuario_id = st.session_state.get("usuario_id", 1)
@@ -207,14 +207,13 @@ else:
                 clase_counts = st.session_state.df[st.session_state.variable_objetivo].value_counts()
                 for clase, count in clase_counts.items():
                     st.write(f"- {clase}: {count} ({count/len(st.session_state.df)*100:.1f}%)")
-        
-        # Mostrar variables predictoras
+          # Mostrar variables predictoras
         st.write(f"**Variables predictoras seleccionadas ({len(st.session_state.variables_predictoras)}):**")
         if len(st.session_state.variables_predictoras) > 10:
             st.write(", ".join(st.session_state.variables_predictoras[:10]) + f" y {len(st.session_state.variables_predictoras)-10} más...")
         else:
             st.write(", ".join(st.session_state.variables_predictoras))
-        
+          
         # Botones de navegación
         col1, col2 = st.columns(2)
         with col1:
@@ -224,12 +223,15 @@ else:
                 st.rerun()
         
         with col2:
-            if st.button("➡️ Continuar con transformaciones"):
+            if st.button("➡️ Continuar con validación"):
+                # Marcar etapa de configuración como completada
+                SessionManager.update_progress("configuracion", True)
+                
                 # Registrar acción
                 log_audit(
                     usuario_id, 
                     "NAVEGACION", 
-                    "transformaciones", 
-                    f"Continuar con transformaciones de datos para {st.session_state.filename}"
+                    "validacion", 
+                    f"Continuar con validación de datos para {st.session_state.filename}"
                 )
-                st.switch_page("pages/datos/03_Transformaciones.py")
+                st.switch_page("pages/datos/03_Validar_Datos.py")
