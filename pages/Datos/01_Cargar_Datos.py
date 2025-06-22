@@ -33,8 +33,6 @@ if 'paso_carga' not in st.session_state:
 if 'metodo_carga' not in st.session_state:
     # None = no seleccionado, "existente" = dataset existente, "nuevo" = nuevo CSV
     st.session_state.metodo_carga = None
-if 'view_full' not in st.session_state:
-    st.session_state.view_full = False
 
 # Título y descripción de la página
 st.title("📊 Cargar Datos")
@@ -91,16 +89,12 @@ def mostrar_info_dataset():
             with st.expander("Ver metadatos completos"):
                 st.json(st.session_state.metadatos)
         
-        # Vista previa de los datos
-        st.write("### Vista previa de los datos")
-        st.dataframe(st.session_state.df.head(10), use_container_width=True)
-        
         # Estadísticas básicas
         with st.expander("Estadísticas descriptivas"):
             st.write(st.session_state.df.describe())
         
-        # Información de las columnas
-        st.write("### Información de las columnas")
+        # Información de las columnas como subtítulo
+        st.write("#### Detalle de columnas")
         info_df = pd.DataFrame({
             'Columna': st.session_state.df.columns,
             'Tipo': [str(st.session_state.df[col].dtype) for col in st.session_state.df.columns],
@@ -110,32 +104,33 @@ def mostrar_info_dataset():
         })
         st.dataframe(info_df, use_container_width=True)
         
-        # Botones para acciones adicionales
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("Ver datos completos" if not st.session_state.view_full else "Ocultar datos completos"):
-                st.session_state.view_full = not st.session_state.view_full
-        with col2:
-            csv = st.session_state.df.to_csv(index=False)
-            st.download_button(
-                label="Descargar CSV procesado",
-                data=csv,
-                file_name=f"procesado_{st.session_state.filename}",
-                mime="text/csv"
-            )
-        with col3:
-            if st.button("Continuar con validación"):
-                # Redireccionar a la página de validación
-                st.session_state.next_page = "validacion"
-                st.info("Redirigiendo a la página de validación...")
-                # Registrar acción de usuario para auditoría
-                log_audit(usuario_id, "NAVEGACIÓN", "validacion", 
-                         f"Continuar con validación de {st.session_state.filename}")
+        # Vista previa de los datos
+        st.write("### Vista previa de los datos")
+        st.dataframe(st.session_state.df.head(10), use_container_width=True)
         
-        # Mostrar el DataFrame completo si se seleccionó
-        if st.session_state.view_full:
-            st.write("### Datos completos")
-            st.dataframe(st.session_state.df, use_container_width=True)
+        # Separador para botones de navegación
+        st.write("---")
+        st.write("### Navegación")
+          # Botones de navegación al mismo nivel
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬅️ Cargar un dataset diferente", use_container_width=True):
+                st.session_state.paso_carga = 0
+                st.session_state.metodo_carga = None
+                st.session_state.df = None
+                st.session_state.filename = None
+                st.session_state.metadatos = None
+                st.session_state.upload_timestamp = None
+                st.rerun()
+        with col2:
+            if st.button("➡️ Continuar con configuración", use_container_width=True):
+                # Redireccionar a la página de configuración
+                st.session_state.next_page = "configuracion"
+                st.info("Redirigiendo a la página de configuración de datos...")
+                # Registrar acción de usuario para auditoría
+                log_audit(usuario_id, "NAVEGACIÓN", "configuracion", 
+                         f"Continuar con configuración de {st.session_state.filename}")
+                st.switch_page("pages/datos/02_Configurar_Datos.py")
 
 # PASO 0: Seleccionar método de carga
 if st.session_state.paso_carga == 0:
@@ -348,17 +343,6 @@ elif st.session_state.paso_carga == 1:
 # PASO 2: Mostrar información del dataset cargado
 elif st.session_state.paso_carga == 2:
     st.write("### Paso 3: Revisar y trabajar con el dataset")
-    
-    # Botón para volver al método de carga
-    if st.button("⬅️ Cargar un dataset diferente"):
-        st.session_state.paso_carga = 0
-        st.session_state.metodo_carga = None
-        st.session_state.df = None
-        st.session_state.filename = None
-        st.session_state.metadatos = None
-        st.session_state.upload_timestamp = None
-        st.session_state.view_full = False
-        st.rerun()
     
     # Mostrar información del dataset
     mostrar_info_dataset()
