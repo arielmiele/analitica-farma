@@ -62,9 +62,7 @@ def crear_mock_db(db_path="analitica_farma.db"):
             fecha_ejecucion DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_dataset) REFERENCES datasets(id_dataset),
             FOREIGN KEY (id_modelo) REFERENCES modelos(id_modelo)
-        );""",
-
-        # Tabla de reportes: reportes generados a partir de los análisis
+        );""",        # Tabla de reportes: reportes generados a partir de los análisis
         """CREATE TABLE IF NOT EXISTS reportes (
             id_reporte INTEGER PRIMARY KEY AUTOINCREMENT,
             id_dataset INTEGER NOT NULL,
@@ -72,6 +70,18 @@ def crear_mock_db(db_path="analitica_farma.db"):
             formato TEXT CHECK (formato IN ('pdf', 'csv')),
             fecha_generacion DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_dataset) REFERENCES datasets(id_dataset)
+        );""",
+
+        # Tabla de configuraciones de modelos: almacena las configuraciones para los modelos ML
+        """CREATE TABLE IF NOT EXISTS configuraciones_modelo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_usuario INTEGER NOT NULL,
+            tipo_problema TEXT NOT NULL CHECK (tipo_problema IN ('regresion', 'clasificacion')),
+            variable_objetivo TEXT NOT NULL,
+            variables_predictoras TEXT NOT NULL,
+            configuracion_completa TEXT NOT NULL,
+            fecha_creacion TIMESTAMP NOT NULL,
+            FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
         );""",
 
         # Tabla de auditoría: registro de acciones relevantes para trazabilidad

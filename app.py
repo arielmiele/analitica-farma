@@ -1,3 +1,4 @@
+from logging import config
 import streamlit as st
 
 # Configuración global de la app (título e ícono en la pestaña)
@@ -17,7 +18,7 @@ def deslogueo():
 pagina_logueo = st.Page("pages/00_Logueo.py", title="Logueo", icon=":material/login:", default=True)
 pagina_deslogueo = st.Page(deslogueo, title="Deslogueo", icon=":material/logout:")
 cargar_datos = st.Page("pages/Datos/01_Cargar_Datos.py", title="Cargar Datos", icon=":material/database_upload:")
-validar_datos = st.Page("pages/Datos/02_Validar_Datos.py", title="Validar Datos", icon=":material/check_circle:")
+configurar_datos = st.Page("pages/Datos/02_Configurar_Datos.py", title="Configurar Datos", icon=":material/check_circle:")
 transformaciones = st.Page("pages/Datos/03_Transformaciones.py", title="Transformaciones", icon=":material/wand_stars:")
 entrenar_modelos = st.Page("pages/Machine Learning/04_Entrenar_Modelos.py", title="Entrenar Modelos", icon=":material/model_training:")
 evaluar_modelos = st.Page("pages/Machine Learning/05_Evaluar_Modelos.py", title="Evaluar Modelos", icon=":material/network_intel_node:")
@@ -30,7 +31,7 @@ if st.session_state.logged_in:
     pg = st.navigation(
         {
             "Cuenta": [pagina_deslogueo],
-            "Datos": [cargar_datos, validar_datos, transformaciones],
+            "Datos": [cargar_datos, configurar_datos, transformaciones],
             "Machine Learning": [entrenar_modelos, evaluar_modelos, recomendar_modelo],
             "Reportes & Dashboards": [reporte, dashboard]
         }
