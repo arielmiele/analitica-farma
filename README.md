@@ -1,6 +1,6 @@
 # analitica-farma
 
-Aplicación para analizar datos productivos en la industria farmacéutica y recomendar modelos de machine learning. Permite cargar datos, transformarlos, evaluar modelos y generar reportes. Desarrollada con Streamlit, Python y conexión a Snowflake.
+Aplicación para analizar datos productivos en la industria farmacéutica y recomendar modelos de machine learning. Permite cargar datos, transformarlos, evaluar modelos y generar reportes. Desarrollada con Streamlit, Python y SQLite para almacenamiento local.
 
 ## Estructura del Proyecto
 
@@ -8,7 +8,9 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 ├── app.py                  # Punto de entrada principal de la app Streamlit y la navegación multipágina
 ├── requirements.txt        # Dependencias del proyecto
 ├── README.md               # Este archivo
+├── analitica_farma.db      # Base de datos SQLite local
 ├── pages/                  # Páginas multipágina de Streamlit (cada funcionalidad principal)
+│   ├── 00_Logueo.py        # Página de inicio de sesión
 │   ├── Datos/
 │   │   ├── 01_Cargar_Datos.py
 │   │   ├── 02_Validar_Datos.py
@@ -36,11 +38,15 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 │   │   └── generador.py
 │   └── seguridad/          # Autenticación y control de acceso
 │       └── autenticador.py
+├── logs/                   # Logs de auditoría y operaciones
+│   ├── auditoria_YYYYMMDD.log
+│   └── carga_datos_YYYYMMDD.log
 ```
 
 - Las páginas en `pages/` están organizadas en subcarpetas por dominio funcional: Datos, Machine Learning y Reportes.
 - El archivo `app.py` implementa la navegación multipágina y el control de acceso (login/logout) usando `st.Page` y `st.navigation`.
 - El código fuente en `src/` está organizado por dominio: datos, modelos, reportes, seguridad y auditoría.
+- La base de datos SQLite (`analitica_farma.db`) almacena los datos, metadatos, usuarios y registros de auditoría.
 
 ## app.py
 
@@ -73,8 +79,8 @@ Esto permite una experiencia de usuario moderna, segura y fácil de mantener, al
 | Archivo/Carpeta                        | Descripción                                                                                |
 |----------------------------------------|--------------------------------------------------------------------------------------------|
 | app.py                                 | Punto de entrada principal de la app Streamlit. Inicializa la navegación multipágina.      |
-| pages/00_Home.py                       | Página de inicio de la aplicación.                                                         |
-| pages/01_Cargar_Datos.py               | Página para cargar datos desde CSV o Snowflake y mostrar vista previa.                     |
+| pages/00_Logueo.py                     | Página de inicio de sesión de la aplicación.                                               |
+| pages/01_Cargar_Datos.py               | Página para cargar datos desde CSV y mostrar vista previa.                                 |
 | pages/02_Validar_Datos.py              | Página para validar estructura, tipos y calidad de los datos cargados.                     |
 | pages/03_Transformaciones.py           | Página para aplicar transformaciones (normalización, imputación, etc.) a los datos.        |
 | pages/04_Entrenar_Modelos.py           | Página para seleccionar, entrenar y comparar modelos de ML.                                |
@@ -82,7 +88,7 @@ Esto permite una experiencia de usuario moderna, segura y fácil de mantener, al
 | pages/06_Recomendar_Modelo.py          | Página que recomienda el mejor modelo según desempeño y permite su aprobación.             |
 | pages/07_Reporte.py                    | Página para generar y descargar reportes en PDF o CSV.                                     |
 | pages/08_Dashboard.py                  | Dashboard unificado con resumen de datasets, modelos, reportes y transformaciones.         |
-| src/datos/cargador.py                  | Funciones para cargar datos desde CSV o Snowflake, validando esquema y conexión.           |
+| src/datos/cargador.py                  | Funciones para cargar datos desde CSV, validar y almacenar en SQLite.                      |
 | src/datos/limpiador.py                 | Funciones para detectar y limpiar duplicados, valores nulos y problemas de calidad.        |
 | src/datos/transformador.py             | Funciones para aplicar transformaciones y revertirlas si es necesario.                     |
 | src/datos/mock_db.py                   | Inicializa la base de datos SQLite y crea información de ejemplo.                          |
@@ -90,14 +96,17 @@ Esto permite una experiencia de usuario moderna, segura y fácil de mantener, al
 | src/modelos/evaluador.py               | Funciones para evaluar modelos y calcular métricas clave (accuracy, RMSE, F1, etc.).       |
 | src/modelos/recomendador.py            | Algoritmo para recomendar el mejor modelo según los resultados obtenidos.                  |
 | src/reportes/generador.py              | Generación de reportes PDF/CSV con resumen de análisis, transformaciones y modelos.        |
-| src/seguridad/autenticador.py          | Integración SSO, control de roles y validación de permisos de usuario.                     |
+| src/seguridad/autenticador.py          | Control de roles y validación de permisos de usuario.                                      |
 | src/audit/logger.py                    | Registro de logs de auditoría: carga, transformación, entrenamiento, exportación, etc.     |
 
-## Uso de la base de datos mock (SQLite)
+## Uso de la base de datos SQLite
 
-### ¿Por qué usar una base de datos mock?
+La aplicación utiliza SQLite como sistema de almacenamiento de datos principal. Esto proporciona:
 
-Durante el desarrollo y pruebas, es recomendable utilizar una base de datos local y liviana (mock) en vez de conectarse directamente a Snowflake. Esto permite:
+1. **Almacenamiento estructurado**: Tablas relacionales para datasets, transformaciones, modelos y auditoría.
+2. **Persistencia de datos**: Los datos cargados y procesados se mantienen entre sesiones.
+3. **Auditoría completa**: Registro de todas las operaciones realizadas por los usuarios.
+4. **Facilidad de despliegue**: No requiere configuración de servidores de base de datos adicionales.
 
 - Desarrollar y testear sin depender de la infraestructura de la nube.
 - Evitar costos y riesgos de modificar datos reales.
