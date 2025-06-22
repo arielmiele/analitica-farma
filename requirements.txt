@@ -11,9 +11,19 @@ matplotlib>=3.8.0
 seaborn>=0.13.0
 numpy>=1.26.0
 plotly>=5.19.0
+sqlite3>=2.6.0
 
-# Seguridad y autenticación (SSO, opcional)
+# Procesamiento de datos
+openpyxl>=3.1.0   # Para soporte de Excel
+statsmodels>=0.14.0   # Para análisis estadístico
+scipy>=1.12.0   # Para procesamiento científico
+
+# Seguridad y autenticación
 python-jose[cryptography]>=3.3.0
 
 # Logging y auditoría
 loguru>=0.7.0
+
+# Exportación y reportes
+jinja2>=3.1.2   # Para plantillas de reportes
+pdfkit>=1.0.0   # Para generación de PDF desde HTML

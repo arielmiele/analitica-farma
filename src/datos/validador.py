@@ -132,7 +132,7 @@ def validar_tipos_datos(df):
         # Revisar cada columna del DataFrame
         for columna in df.columns:
             # Obtener el tipo de datos actual
-            tipo_actual = df[columna].dtype
+            tipo_actual = df[columna].dtype  # noqa: F841
             
             # Verificar columnas numéricas que podrían ser categóricas
             if pd.api.types.is_numeric_dtype(df[columna]):
@@ -160,7 +160,7 @@ def validar_tipos_datos(df):
                             'sugerencia': "Convertir a tipo numérico para análisis cuantitativo",
                             'opciones': ['Mantener como texto', 'Convertir a numérico']
                         })
-                    except:
+                    except Exception:
                         pass
                     
                     # Verificar si podría ser una fecha
@@ -236,11 +236,11 @@ def es_posible_fecha(texto):
             try:
                 datetime.strptime(texto, formato)
                 return True
-            except:
+            except Exception:
                 continue
                 
         return False
-    except:
+    except Exception:
         return False
 
 
@@ -376,27 +376,27 @@ def validar_unidades(df):
     
     try:
         # Definir patrones y palabras clave para unidades comunes
-        unidades_temperatura = {
+        unidades_temperatura = {  # noqa: F841
             'celsius': ['°c', 'c', 'celsius', 'centígrados', 'centigrados'],
             'fahrenheit': ['°f', 'f', 'fahrenheit'],
             'kelvin': ['k', 'kelvin']
         }
         
-        unidades_peso = {
+        unidades_peso = {  # noqa: F841
             'kilogramos': ['kg', 'kgs', 'kilogramos', 'kilos'],
             'gramos': ['g', 'gr', 'grs', 'gramos'],
             'libras': ['lb', 'lbs', 'libras', 'pounds'],
             'onzas': ['oz', 'onzas', 'ounces']
         }
         
-        unidades_longitud = {
+        unidades_longitud = {  # noqa: F841
             'metros': ['m', 'mt', 'mts', 'metros'],
             'centimetros': ['cm', 'cms', 'centímetros', 'centimetros'],
             'pulgadas': ['in', 'inch', 'pulgadas'],
             'pies': ['ft', 'feet', 'pie', 'pies']
         }
         
-        unidades_volumen = {
+        unidades_volumen = {  # noqa: F841
             'litros': ['l', 'lt', 'lts', 'litros'],
             'mililitros': ['ml', 'mls', 'mililitros'],
             'galones': ['gal', 'galones', 'gallons'],

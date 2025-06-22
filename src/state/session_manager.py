@@ -1,5 +1,5 @@
 import streamlit as st
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 import datetime
 
 class SessionManager:
