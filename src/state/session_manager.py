@@ -19,6 +19,7 @@ class SessionManager:
                 "carga_datos": False,
                 "configuracion": False,
                 "validacion": False,
+                "analisis_calidad": False,
                 "transformacion": False,
                 "entrenamiento": False,
                 "evaluacion": False,
