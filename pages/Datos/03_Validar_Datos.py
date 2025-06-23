@@ -153,27 +153,32 @@ else:
         
         # Botones de navegación
         st.write("### Acciones disponibles")
-        
-        # Si hay errores, mostrar opción para corregir
+
         if total_errores > 0:
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
             with col1:
-                if st.button("⚙️ Corregir problemas automáticamente", use_container_width=True):
+                if st.button("⬅️ Volver a configurar datos", use_container_width=True):
+                    st.switch_page("pages/datos/02_Configurar_Datos.py")
+            with col2:
+                if st.button("⚙️ Corregir automáticamente", use_container_width=True):
                     st.session_state.paso_validacion = 2
                     st.rerun()
-            with col2:
+            with col3:
                 if st.button("➡️ Continuar sin corregir", use_container_width=True):
-                    # Registrar decisión
                     log_audit(usuario_id, "OMITIR_CORRECCIONES", "validacion", 
-                            f"Usuario decidió continuar sin corregir {total_errores} problemas")
+                          f"Usuario decidió continuar sin corregir {total_errores} problemas")
                     st.session_state.validacion_completa = True
-                    st.switch_page("pages/datos/04_Transformar_Datos.py")
+                    st.switch_page("pages/datos/04_Analizar_Calidad.py")
         else:
-            # Si no hay errores, solo mostrar botón para continuar
-            if st.button("➡️ Continuar con transformaciones", use_container_width=True):
-                log_audit(usuario_id, "NAVEGACION", "transformaciones", 
-                         f"Continuar con transformaciones de datos para {st.session_state.filename}")
-                st.switch_page("pages/datos/04_Transformar_Datos.py")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("⬅️ Volver a configurar datos", use_container_width=True):
+                    st.switch_page("pages/datos/02_Configurar_Datos.py")
+            with col2:
+                if st.button("➡️ Continuar con análisis de calidad", use_container_width=True):
+                    log_audit(usuario_id, "NAVEGACION", "análisis de calidad de datos", 
+                          f"Continuar con el análisis de calidad de datos para {st.session_state.filename}")
+                    st.switch_page("pages/datos/04_Analizar_Calidad.py")   
     
     # Paso 2: Aplicar correcciones
     elif st.session_state.paso_validacion == 2:
@@ -295,7 +300,6 @@ else:
                         mensaje = f"Convertida unidad en columna {columna} a {unidad_destino}"
                         correcciones_aplicadas.append(mensaje)
                         log_operation(logger, "CORRECCION_UNIDAD", mensaje, id_usuario=usuario_id)
-                
                 # Si se aplicaron correcciones, actualizar el DataFrame
                 if correcciones_aplicadas:
                     st.session_state.df = df_corregido
@@ -305,17 +309,17 @@ else:
                     # Mostrar resumen de correcciones
                     st.success(f"✅ Se aplicaron {len(correcciones_aplicadas)} correcciones con éxito")
                     for correccion in correcciones_aplicadas:
-                        st.info(correccion)                    # Marcar la validación como completa
-                    st.session_state.validacion_completa = True
+                        st.info(correccion)
                     
                     # Marcar etapa de validación como completada en el estado global
                     SessionManager.update_progress("validacion", True)
                     
-                    # Dar opción para continuar
-                    if st.button("➡️ Continuar con transformaciones"):
-                        st.switch_page("pages/datos/04_Transformar_Datos.py")
+                    if st.button("➡️ Continuar con el análisis de calidad", use_container_width=True):
+                        st.session_state.validacion_completa = True
+                        st.switch_page("pages/datos/04_Analizar_Calidad.py")
                 else:
                     st.warning("No se seleccionó ninguna corrección para aplicar")
-                    if st.button("⬅️ Volver a selección"):
+                    
+                    if st.button("⬅️ Volver a selección", use_container_width=True):
                         st.session_state.paso_validacion = 1
                         st.rerun()

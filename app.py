@@ -23,6 +23,8 @@ if SessionManager.is_logged_in():
     cargar_datos = st.Page("pages/Datos/01_Cargar_Datos.py", title="Cargar Datos", icon=":material/database_upload:")
     configurar_datos = st.Page("pages/Datos/02_Configurar_Datos.py", title="Configurar Datos", icon=":material/check_circle:")
     validar_datos = st.Page("pages/Datos/03_Validar_Datos.py", title="Validar Datos", icon=":material/wand_stars:")
+    analizar_calidad = st.Page("pages/Datos/04_Analizar_Calidad.py", title="Analizar Calidad", icon=":material/analytics:")
+    # No se usa transformaciones directamente, pero se puede agregar si es necesario
     #transformaciones = st.Page("pages/Datos/03_Transformaciones.py", title="Transformaciones", icon=":material/wand_stars:")
     entrenar_modelos = st.Page("pages/Machine Learning/04_Entrenar_Modelos.py", title="Entrenar Modelos", icon=":material/model_training:")
     evaluar_modelos = st.Page("pages/Machine Learning/05_Evaluar_Modelos.py", title="Evaluar Modelos", icon=":material/network_intel_node:")
@@ -37,7 +39,7 @@ if SessionManager.is_logged_in():
     pg = st.navigation(
         {
             "Cuenta": [pagina_deslogueo],
-            "Datos": [cargar_datos, configurar_datos, validar_datos],
+            "Datos": [cargar_datos, configurar_datos, validar_datos, analizar_calidad],
             "Machine Learning": [entrenar_modelos, evaluar_modelos, recomendar_modelo],
             "Reportes & Dashboards": [reporte, dashboard]
         }
