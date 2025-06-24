@@ -12,7 +12,7 @@ SessionManager.init_session_state()
 
 # Función de deslogueo: cambia el estado de sesión y recarga la app
 def deslogueo():
-    if st.button("Deslogueo"):
+    if st.button("Deslogueo", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 

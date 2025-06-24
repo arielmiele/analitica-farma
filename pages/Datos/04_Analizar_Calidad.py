@@ -249,7 +249,7 @@ else:
                     st.info("No se pudieron analizar valores nulos en el dataset.")
                 
                 # Botón para ver análisis detallado
-                if st.button("Ver Análisis Detallado", key="btn_detalle"):
+                if st.button("🔬 Ver Análisis Detallado", key="btn_detalle", use_container_width=True):
                     st.session_state.paso_calidad = 1
                     st.rerun()
                 
@@ -314,12 +314,11 @@ else:
                         use_container_width=True,
                         height=400
                     )
-                    
-                    # Visualizaciones específicas según tipo de dato
+                      # Visualizaciones específicas según tipo de dato
                     st.write("### Visualizaciones por Tipo de Dato")
                     
-                    # Para columnas numéricas: distribución
-                    columnas_numericas = estadisticas[pd.api.types.is_numeric_dtype(estadisticas['tipo'])]['columna'].tolist()
+                    # Filtrar columnas numéricas según el valor de 'tipo'
+                    columnas_numericas = estadisticas[estadisticas['tipo'].str.lower().isin(['numérico', 'numerico', 'float', 'int'])]['columna'].tolist()
                     
                     if columnas_numericas:
                         col_numerica = st.selectbox(
@@ -335,12 +334,8 @@ else:
                                 title=f"Distribución de {col_numerica}"
                             )
                             st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Para columnas categóricas: frecuencia
-                    columnas_categoricas = estadisticas[
-                        (pd.api.types.is_string_dtype(estadisticas['tipo'])) | 
-                        (pd.api.types.is_object_dtype(estadisticas['tipo']))
-                    ]['columna'].tolist()
+                      # Para columnas categóricas: frecuencia
+                    columnas_categoricas = estadisticas[estadisticas['tipo'].str.lower().isin(['categórico', 'categorico', 'object', 'string'])]['columna'].tolist()
                     
                     if columnas_categoricas:
                         col_categorica = st.selectbox(
@@ -634,6 +629,6 @@ else:
                         st.info("No se encontraron outliers según los criterios seleccionados.")
         
         # Botón para volver al resumen
-        if st.button("⬅️ Volver al Resumen", key="btn_volver"):
+        if st.button("⬅️ Volver al Resumen", key="btn_volver", use_container_width=True):
             st.session_state.paso_calidad = 0
             st.rerun()

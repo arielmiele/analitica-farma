@@ -39,7 +39,7 @@ para el análisis y modelado.
 # Verificar si hay datos cargados
 if 'df' not in st.session_state or st.session_state.df is None:
     st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset primero en la página 'Cargar Datos'.")
-    if st.button("Ir a Cargar Datos"):
+    if st.button("Ir a Cargar Datos", use_container_width=True):
         st.session_state.paso_carga = 0  # Reiniciar el paso de carga
         st.switch_page("pages/datos/01_Cargar_Datos.py")
 else:
@@ -85,7 +85,7 @@ else:
             columnas_candidatas = st.session_state.df.select_dtypes(include=['number']).columns.tolist()
             if not columnas_candidatas:
                 st.error("❌ No se encontraron columnas numéricas en el dataset. Una regresión requiere una variable objetivo numérica.")
-                if st.button("⬅️ Volver atrás"):
+                if st.button("⬅️ Volver atrás", use_container_width=True):
                     st.session_state.paso_configuracion = 0
                     st.rerun()
         else:  # clasificación
@@ -125,7 +125,7 @@ else:
             # Botones de navegación
             col1, col2 = st.columns([1, 2])
             with col1:
-                if st.button("⬅️ Cambiar tipo de problema"):
+                if st.button("⬅️ Cambiar tipo de problema", use_container_width=True):
                     st.session_state.paso_configuracion = 0
                     st.session_state.tipo_problema = None
                     st.rerun()
@@ -217,13 +217,13 @@ else:
         # Botones de navegación
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("⬅️ Modificar configuración"):
+            if st.button("⬅️ Modificar configuración", use_container_width=True):
                 st.session_state.paso_configuracion = 1
                 st.session_state.configuracion_validada = False
                 st.rerun()
         
         with col2:
-            if st.button("➡️ Continuar con validación"):
+            if st.button("➡️ Continuar con validación", use_container_width=True):
                 # Marcar etapa de configuración como completada
                 SessionManager.update_progress("configuracion", True)
                 

@@ -218,7 +218,8 @@ def analizar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) 
 
 def generar_estadisticas_por_columna(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Genera estadísticas descriptivas por columna.
+    Genera estadísticas descriptivas por columna, mostrando solo la información
+    relevante para cada tipo de dato y evitando filas y columnas innecesarias.
     
     Args:
         df (pd.DataFrame): DataFrame a analizar
@@ -231,9 +232,15 @@ def generar_estadisticas_por_columna(df: pd.DataFrame) -> pd.DataFrame:
         columnas = df.columns
         resultados = []
         
+        # Determinar qué tipos de columnas tenemos para mostrar solo las estadísticas relevantes
+        tiene_numericas = not df.select_dtypes(include=['number']).empty
+        tiene_texto = not df.select_dtypes(include=['object', 'string']).empty
+        tiene_fechas = not df.select_dtypes(include=['datetime']).empty
+        
         for col in columnas:
             serie = df[col]
             tipo_dato = serie.dtype
+            datos_no_nulos = serie.dropna()
             
             # Estadísticas comunes para todos los tipos
             stats = {
@@ -241,41 +248,116 @@ def generar_estadisticas_por_columna(df: pd.DataFrame) -> pd.DataFrame:
                 'tipo': str(tipo_dato),
                 'nulos': serie.isna().sum(),
                 'porcentaje_nulos': (serie.isna().sum() / len(df)) * 100 if len(df) > 0 else 0,
-                'valores_unicos': serie.nunique()
+                'valores_unicos': serie.nunique(),
             }
             
             # Estadísticas específicas según el tipo
             if pd.api.types.is_numeric_dtype(serie):
-                # Para columnas numéricas
-                stats.update({
-                    'min': serie.min() if not serie.empty else None,
-                    'max': serie.max() if not serie.empty else None,
-                    'media': serie.mean() if not serie.empty else None,
-                    'mediana': serie.median() if not serie.empty else None,
-                    'desv_std': serie.std() if not serie.empty else None
-                })
+                if not datos_no_nulos.empty:
+                    # Para columnas numéricas con datos
+                    stats.update({
+                        'min': datos_no_nulos.min(),
+                        'max': datos_no_nulos.max(),
+                        'media': datos_no_nulos.mean(),
+                        'mediana': datos_no_nulos.median(),
+                        'desv_std': datos_no_nulos.std()
+                    })
+                else:
+                    # Columnas numéricas sin datos
+                    stats.update({
+                        'min': None,
+                        'max': None,
+                        'media': None,
+                        'mediana': None,
+                        'desv_std': None
+                    }) if tiene_numericas else None
+                    
             elif pd.api.types.is_string_dtype(serie) or pd.api.types.is_object_dtype(serie):
                 # Para columnas de texto
-                valor_mas_comun = serie.value_counts().idxmax() if not serie.empty and serie.nunique() > 0 else None
-                longitud_promedio = serie.str.len().mean() if not serie.empty else None
-                
-                stats.update({
-                    'valor_mas_comun': valor_mas_comun,
-                    'frecuencia_valor_comun': serie.value_counts().max() if not serie.empty and serie.nunique() > 0 else 0,
-                    'longitud_promedio': longitud_promedio
-                })
+                if not datos_no_nulos.empty:
+                    valor_counts = datos_no_nulos.value_counts()
+                    if not valor_counts.empty:
+                        valor_mas_comun = valor_counts.index[0]
+                        frecuencia_valor_comun = valor_counts.iloc[0]
+                    else:
+                        valor_mas_comun = None
+                        frecuencia_valor_comun = 0
+                    
+                    try:
+                        # Algunas columnas de objeto pueden no ser strings
+                        longitud_promedio = datos_no_nulos.astype(str).str.len().mean()
+                    except Exception:
+                        longitud_promedio = None
+                    
+                    stats.update({
+                        'valor_mas_comun': valor_mas_comun,
+                        'frecuencia_valor_comun': frecuencia_valor_comun,
+                        'longitud_promedio': longitud_promedio
+                    })
+                else:
+                    # Columnas de texto sin datos
+                    stats.update({
+                        'valor_mas_comun': None,
+                        'frecuencia_valor_comun': None,
+                        'longitud_promedio': None
+                    }) if tiene_texto else None
+                    
             elif pd.api.types.is_datetime64_dtype(serie):
                 # Para columnas de fecha/hora
-                stats.update({
-                    'min': serie.min() if not serie.empty else None,
-                    'max': serie.max() if not serie.empty else None,
-                    'rango_dias': (serie.max() - serie.min()).days if not serie.empty else None
-                })
+                if not datos_no_nulos.empty:
+                    try:
+                        rango_dias = (datos_no_nulos.max() - datos_no_nulos.min()).days
+                    except Exception:
+                        rango_dias = None
+                    
+                    stats.update({
+                        'min': datos_no_nulos.min(),
+                        'max': datos_no_nulos.max(),
+                        'rango_dias': rango_dias
+                    })
+                else:
+                    # Columnas de fecha sin datos
+                    stats.update({
+                        'min': None,
+                        'max': None,
+                        'rango_dias': None
+                    }) if tiene_fechas else None
             
             resultados.append(stats)
         
         # Convertir a DataFrame
-        return pd.DataFrame(resultados)
+        df_resultado = pd.DataFrame(resultados)
+        
+        # Si el DataFrame está vacío, retornar el DataFrame vacío
+        if df_resultado.empty:
+            return df_resultado
+            
+        # Determinar qué columnas mostrar según el contenido real
+        # Primero, las columnas comunes que siempre se muestran
+        cols_seleccionadas = ['columna', 'tipo', 'nulos', 'porcentaje_nulos', 'valores_unicos']
+        
+        # Agregar columnas específicas solo si tienen al menos un valor no nulo
+        columnas_numericas = ['min', 'max', 'media', 'mediana', 'desv_std']
+        columnas_texto = ['valor_mas_comun', 'frecuencia_valor_comun', 'longitud_promedio']
+        columnas_fecha = ['min', 'max', 'rango_dias']
+        
+        # Verificar si hay valores no nulos en cada grupo de columnas
+        for grupo in [columnas_numericas, columnas_texto, columnas_fecha]:
+            # Filtrar solo las columnas que existen en el DataFrame
+            grupo_existente = [col for col in grupo if col in df_resultado.columns]
+            if grupo_existente:
+                # Verificar si hay al menos una columna con valores no nulos
+                tiene_valores = df_resultado[grupo_existente].notna().any().any()
+                if tiene_valores:
+                    # Agregar solo las columnas que no están ya en la lista
+                    cols_seleccionadas.extend([col for col in grupo_existente if col not in cols_seleccionadas])
+        
+        # Filtrar columnas existentes
+        cols_existentes = [col for col in cols_seleccionadas if col in df_resultado.columns]
+        
+        # Devolver el DataFrame con las columnas seleccionadas
+        return df_resultado[cols_existentes]
+        
     except Exception as e:
         logger.error(f"Error al generar estadísticas por columna: {str(e)}")
         return pd.DataFrame()
