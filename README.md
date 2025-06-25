@@ -187,6 +187,145 @@ La interfaz de usuario en `06_Recomendar_Modelo.py` incluye:
 - Opción para aceptar la recomendación o seleccionar otro modelo
 - Comentarios sobre la selección realizada
 
+## Sistema de Validación de Datos
+
+La aplicación implementa un robusto sistema de validación de datos para asegurar la calidad y consistencia de los datos antes de su análisis. Este sistema se encarga de detectar y corregir diversos problemas que podrían afectar el rendimiento de los modelos de machine learning.
+
+### Arquitectura del Sistema de Validación
+
+El sistema de validación está organizado en tres capas principales:
+
+1. **Módulos de validación** (`src/datos/validador.py`):
+   - Contiene algoritmos especializados para detectar problemas en los datos
+   - Implementa validadores independientes para tipos de datos, fechas y unidades
+   - Utiliza heurísticas avanzadas para identificar inconsistencias sutiles
+
+2. **Módulos de corrección** (`src/datos/transformador.py` y `src/datos/limpiador.py`):
+   - Proporciona funciones para corregir los problemas detectados
+   - Implementa algoritmos de conversión entre diferentes tipos y formatos
+   - Ofrece herramientas para la gestión de duplicados
+
+3. **Interfaz de usuario** (`pages/Datos/03_Validar_Datos.py`):
+   - Presenta los resultados de la validación de forma clara y procesable
+   - Permite al usuario seleccionar qué correcciones aplicar
+   - Proporciona retroalimentación visual sobre el estado de los datos
+
+### Validaciones Implementadas
+
+#### 1. Validación de Tipos de Datos (`validar_tipos_datos`)
+
+Este validador detecta inconsistencias en los tipos de datos de las columnas:
+
+- **Detección de variables categóricas codificadas como numéricas**
+  - Identifica columnas numéricas con pocos valores únicos
+  - Sugiere la conversión a tipo categórico cuando es apropiado
+
+- **Identificación de columnas de texto que contienen valores numéricos**
+  - Analiza el contenido de columnas de texto para detectar patrones numéricos
+  - Recomienda conversión a tipo numérico cuando todos los valores son números
+
+- **Reconocimiento de fechas almacenadas como texto**
+  - Utiliza expresiones regulares y múltiples formatos para detectar fechas
+  - Sugiere la conversión a tipo datetime para análisis temporal
+
+#### 2. Validación de Formatos de Fecha (`validar_fechas`)
+
+Este validador se especializa en columnas temporales:
+
+- **Detección automática de columnas que podrían contener fechas**
+  - Identifica columnas por nombre (fecha, date, time, etc.)
+  - Analiza el contenido mediante patrones y heurísticas
+
+- **Identificación de formatos de fecha inconsistentes**
+  - Detecta cuando una misma columna contiene múltiples formatos (DD/MM/YYYY, MM/DD/YYYY, etc.)
+  - Recomienda la estandarización a un formato común (preferentemente ISO 8601)
+
+- **Verificación de información de zona horaria**
+  - Comprueba si las columnas datetime tienen información de zona horaria
+  - Sugiere agregar información de zona horaria para análisis temporales precisos
+
+#### 3. Validación de Unidades de Medida (`validar_unidades`)
+
+Este validador identifica inconsistencias en unidades de magnitudes físicas:
+
+- **Detección de columnas que podrían contener unidades de medida**
+  - Identifica columnas por nombre (temperatura, peso, volumen, etc.)
+  - Analiza rangos de valores para inferir posibles unidades
+
+- **Identificación de posibles mezclas de unidades**
+  - Detecta valores atípicos que podrían indicar un cambio de unidad
+  - Sugiere la conversión a una unidad estándar
+
+- **Soporte para diferentes tipos de magnitudes**
+  - Temperatura (Celsius, Fahrenheit, Kelvin)
+  - Peso (kilogramos, gramos, libras, onzas)
+  - Longitud (metros, centímetros, pulgadas, pies)
+  - Volumen (litros, mililitros, galones)
+
+### Detección y Gestión de Duplicados
+
+El sistema también incorpora herramientas avanzadas para la detección y gestión de duplicados:
+
+1. **Detección personalizable** (`detectar_duplicados`):
+   - Permite seleccionar las columnas clave para identificar duplicados
+   - Genera estadísticas detalladas sobre la cantidad y distribución de duplicados
+   - Identifica grupos de registros duplicados para análisis detallado
+
+2. **Opciones de corrección**:
+   - **Eliminación selectiva** (`eliminar_duplicados`): Permite conservar la primera ocurrencia, la última, o eliminar todas
+   - **Fusión inteligente** (`fusionar_duplicados`): Combina registros duplicados mediante diferentes estrategias por columna:
+     - Para columnas numéricas: media, suma, mínimo, máximo, mediana
+     - Para columnas categóricas: primer valor, último valor, valor más frecuente
+
+3. **Feedback visual**:
+   - Previsualización de resultados antes de aplicar cambios
+   - Estadísticas comparativas pre/post corrección
+   - Historial detallado de correcciones aplicadas
+
+### Flujo de Trabajo de Validación
+
+El proceso de validación sigue estos pasos:
+
+1. **Detección automática**:
+
+   ```python
+   Cargar datos → Ejecutar validaciones → Presentar resultados
+   ```
+
+2. **Selección de correcciones**:
+
+   ```python
+   Revisar problemas → Seleccionar correcciones → Configurar parámetros
+   ```
+
+3. **Aplicación de cambios**:
+
+   ```python
+   Previsualizar cambios → Aplicar correcciones → Registrar historial
+   ```
+
+4. **Gestión de duplicados** (opcional):
+
+   ```python
+   Seleccionar columnas clave → Detectar duplicados → Eliminar o fusionar
+   ```
+
+### Beneficios del Sistema de Validación
+
+- **Detección proactiva**: Identifica problemas antes de que afecten al análisis
+- **Corrección guiada**: Asiste al usuario en la aplicación de las correcciones adecuadas
+- **Flexibilidad**: Permite personalizar las validaciones según las necesidades específicas
+- **Trazabilidad**: Mantiene un historial detallado de todas las correcciones aplicadas
+- **Robustez**: Manejo de errores para evitar pérdida de datos durante las transformaciones
+
+### Librerías Utilizadas en la Validación
+
+- **pandas**: Para manipulación eficiente de datos y detección de tipos
+- **re (expresiones regulares)**: Para la identificación de patrones en fechas y unidades
+- **datetime**: Para validación y estandarización de formatos de fecha
+- **streamlit**: Para la interfaz de usuario interactiva
+- **logging**: Para el registro detallado de operaciones y auditoría
+
 ## Mejoras Recientes (Junio 2025)
 
 Se ha implementado la Historia de Usuario 9 (HU9) "Evaluar múltiples modelos de ML para encontrar el más preciso", que incluye:
@@ -276,7 +415,10 @@ La aplicación utiliza un gestor centralizado de estado (`SessionManager`) que:
 | src/modelos/configurador.py            | Configuración de parámetros para los modelos de machine learning.                         |
 | src/modelos/entrenador.py              | Lógica para entrenar múltiples modelos de ML y realizar benchmarking automático.          |
 | src/modelos/evaluador.py               | Funciones para evaluar modelos y visualizar métricas detalladas.                          |
+| src/modelos/modelo_serializer.py       | Sistema de serialización/deserialización de modelos ML para almacenamiento y recuperación.|
+| src/modelos/diagnostico_modelo.py      | Diagnóstico sobre disponibilidad y estado de objetos modelo en el benchmarking.           |
 | src/modelos/recomendador.py            | Algoritmo para recomendar el mejor modelo según criterios seleccionables.                 |
+| src/modelos/visualizador.py            | Generación de visualizaciones avanzadas para evaluación de modelos.                       |
 | src/reportes/generador.py              | Generación de reportes PDF/CSV con resumen de análisis, transformaciones y modelos.       |
 | src/seguridad/autenticador.py          | Control de roles y validación de permisos de usuario.                                     |
 | src/state/session_manager.py           | Gestión centralizada del estado de la aplicación y progreso del workflow.                 |
@@ -398,6 +540,64 @@ El módulo `src/state/session_manager.py` proporciona:
    streamlit run app.py
    ```
 
+## Sistema de Serialización de Modelos
+
+La aplicación incorpora un sistema robusto para la serialización y deserialización de modelos de machine learning, garantizando que los objetos modelo estén disponibles para visualizaciones avanzadas y predicciones en tiempo real.
+
+### Arquitectura del Sistema de Serialización
+
+El sistema utiliza un enfoque en capas para manejar la serialización:
+
+1. **Nivel de modelo individual**:  
+   - `serializar_modelo()` y `deserializar_modelo()` convierten modelos individuales entre su forma de objeto y representación serializada
+   - Utiliza joblib para la serialización eficiente de objetos scikit-learn
+   - Codifica en base64 para almacenamiento seguro en JSON/SQLite
+
+2. **Nivel de benchmarking completo**:
+   - `serializar_modelos_benchmarking()` procesa todos los modelos en un resultado de benchmarking
+   - `deserializar_modelos_benchmarking()` reconstruye todos los modelos a partir de resultados guardados
+   - Mantiene la estructura de datos original para compatibilidad con el resto de la aplicación
+
+3. **Nivel de diagnóstico**:
+   - `diagnosticar_objetos_modelo()` verifica la disponibilidad de objetos modelo
+   - Proporciona información de depuración sobre el estado de serialización
+
+### Proceso de Serialización
+
+El flujo de trabajo de serialización sigue estos pasos:
+
+1. **Entrenamiento**:
+
+   ```python
+   Entrenar modelos → Serializar objetos → Guardar en SQLite
+   ```
+
+2. **Carga de Benchmarking**:
+
+   ```python
+   Cargar de SQLite → Deserializar objetos → Restaurar modelos completos
+   ```
+
+3. **Evaluación y Visualización**:
+
+   ```python
+   Usar objetos modelo para → Predicciones → Visualizaciones avanzadas
+   ```
+
+### Ventajas técnicas
+
+- **Persistencia completa**: Los modelos entrenados se conservan incluso después de cerrar la aplicación
+- **Ahorro de recursos**: No es necesario reentrenar modelos para evaluaciones posteriores
+- **Experiencia de usuario mejorada**: Acceso a visualizaciones avanzadas en cualquier momento
+- **Compatibilidad**: Funciona con todos los modelos de scikit-learn y sus extensiones
+
+### Tecnologías utilizadas
+
+- **joblib**: Serialización optimizada para objetos científicos de Python, especialmente eficiente con arrays NumPy
+- **base64**: Codificación segura para almacenamiento en bases de datos y formatos JSON
+- **io.BytesIO**: Buffers en memoria para operaciones eficientes de serialización sin archivos temporales
+- **JSON**: Formato intermedio para almacenamiento estructurado en SQLite
+
 ## Librerías y Métodos de Machine Learning
 
 La aplicación utiliza una variedad de librerías y métodos para implementar el flujo completo de análisis de datos y machine learning, cada una con un propósito específico dentro del pipeline:
@@ -473,6 +673,11 @@ Es la columna vertebral de nuestras funcionalidades de machine learning, proporc
   - Gráficos de importancia de características
   - Análisis de dependencia para entender relaciones
 
+- `joblib` y `base64`: Serialización robusta de modelos
+  - Almacenamiento eficiente de modelos scikit-learn
+  - Codificación segura para base de datos
+  - Compresión integrada para optimizar espacio
+
 - Modelos avanzados:
   - `lightgbm`: Implementación eficiente de gradient boosting
   - `xgboost`: Implementación escalable de boosting de gradiente extremo
@@ -498,6 +703,44 @@ Es la columna vertebral de nuestras funcionalidades de machine learning, proporc
   1. Comparación entre diferentes ejecuciones
   2. Análisis de rendimiento a lo largo del tiempo
   3. Evaluación detallada de modelos específicos
+
+#### 2. Sistema de Serialización de Modelos (`modelo_serializer.py`)
+
+- **`serializar_modelo`**: Convierte modelos de scikit-learn a formato serializable
+  1. Utiliza joblib para serializar eficientemente el objeto modelo completo
+  2. Codifica el resultado en base64 para almacenamiento seguro en JSON/SQLite
+  3. Comprime los datos para optimizar el espacio de almacenamiento
+
+- **`deserializar_modelo`**: Reconstruye objetos modelo a partir de representaciones serializadas
+  1. Decodifica la cadena base64 a su representación binaria
+  2. Utiliza joblib para cargar el objeto modelo completo con sus parámetros
+  3. Recupera todas las funcionalidades del modelo original (predict, predict_proba, etc.)
+
+- **`serializar_modelos_benchmarking`**: Prepara los resultados completos del benchmarking
+  1. Procesa recursivamente todos los modelos en los resultados
+  2. Marca los modelos que tienen objetos serializados para seguimiento
+  3. Elimina objetos no serializables manteniendo la estructura de datos
+
+- **`deserializar_modelos_benchmarking`**: Restaura los objetos modelo en los resultados
+  1. Reconstruye automáticamente todos los modelos serializados
+  2. Mantiene la estructura original de datos para compatibilidad
+  3. Optimiza la memoria eliminando representaciones serializadas redundantes
+
+#### 3. Diagnóstico de Modelos (`diagnostico_modelo.py`)
+
+- **`diagnosticar_objetos_modelo`**: Verifica la disponibilidad de objetos modelo
+  1. Analiza los resultados del benchmarking para detectar modelos sin objetos
+  2. Proporciona diagnóstico detallado del estado de cada modelo
+  3. Genera recomendaciones sobre cómo resolver problemas de serialización
+
+#### 4. Visualización avanzada de modelos (`visualizador.py`)
+
+- **`generar_matriz_confusion`**: Crea matrices de confusión personalizables
+- **`generar_curva_roc`**: Visualiza curvas ROC para problemas binarios y multiclase
+- **`generar_curva_precision_recall`**: Grafica curvas de precisión-recall
+- **`generar_grafico_residuos`**: Analiza residuos para modelos de regresión
+- **`comparar_distribuciones`**: Compara valores reales vs. predichos
+- **`comparar_modelos_roc`**: Contrasta rendimiento de múltiples modelos en un gráfico
 
 #### 2. Evaluación detallada (`evaluador.py`)
 
