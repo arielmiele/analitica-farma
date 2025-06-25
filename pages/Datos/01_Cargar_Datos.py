@@ -174,7 +174,7 @@ if st.session_state.paso_carga == 0:
 # PASO 1: Cargar datos según el método seleccionado
 elif st.session_state.paso_carga == 1:
     # Mostrar botón para volver al paso anterior
-    if st.button("⬅️ Volver a selección de método de carga"):
+    if st.button("⬅️ Volver a selección de método de carga", use_container_width=True):
         st.session_state.paso_carga = 0
         st.session_state.metodo_carga = None
         st.rerun()
@@ -267,7 +267,7 @@ elif st.session_state.paso_carga == 1:
                                          help="Nombre personalizado para el dataset en la base de datos")
             
             # Botón para enviar el formulario
-            submit_button = st.form_submit_button(label="Cargar Datos")
+            submit_button = st.form_submit_button(label="Cargar Datos", use_container_width=True)
 
         # Procesar el archivo cuando se envía el formulario
         if submit_button and 'file_uploader' in st.session_state and st.session_state.file_uploader is not None:
@@ -331,7 +331,8 @@ elif st.session_state.paso_carga == 1:
                             st.info("Validación básica completada. Los datos parecen correctos.")
                         
                         log_operation(logger, "VALIDACIÓN", f"Validación básica completada para: {st.session_state.filename}", 
-                                    id_usuario=usuario_id)                    # Registrar acción de usuario para auditoría
+                                    id_usuario=usuario_id)                    
+                    # Registrar acción de usuario para auditoría
                     log_audit(usuario_id, "CARGA_DATOS", st.session_state.filename, 
                             f"Filas: {df.shape[0]}, Columnas: {df.shape[1]}")
                     

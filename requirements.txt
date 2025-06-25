@@ -11,12 +11,27 @@ matplotlib>=3.8.0
 seaborn>=0.13.0
 numpy>=1.26.0
 plotly>=5.19.0
-sqlite3>=2.6.0
 
 # Procesamiento de datos
 openpyxl>=3.1.0   # Para soporte de Excel
 statsmodels>=0.14.0   # Para análisis estadístico
 scipy>=1.12.0   # Para procesamiento científico
+
+# Para el benchmarking de modelos
+shap>=0.43.0   # Para explicabilidad de modelos
+lightgbm>=4.1.0   # Modelo de gradient boosting eficiente
+xgboost>=2.0.1   # Otro modelo de gradient boosting muy usado
+catboost>=1.2.0   # Modelo especial para variables categóricas
+imbalanced-learn>=0.11.0  # Para manejar conjuntos de datos desbalanceados
+tqdm>=4.66.0     # Para barras de progreso
+joblib>=1.3.2    # Para paralelización y guardado de modelos
+
+# Visualización avanzada
+yellowbrick>=1.5.0  # Herramientas de visualización específicas para ML
+scikit-plot>=0.3.7  # Visualizaciones específicas para scikit-learn
+plotly-express>=0.4.1  # Visualizaciones interactivas con plotly
+umap-learn>=0.5.3  # Para visualización de alta dimensionalidad
+missingno>=0.5.2  # Para visualizar datos faltantes
 
 # Seguridad y autenticación
 python-jose[cryptography]>=3.3.0

@@ -12,6 +12,35 @@ class SidebarComponents:
     """
     
     @staticmethod
+    def render_user_info() -> None:
+        """
+        Renderiza la información del usuario conectado en el sidebar
+        """
+        if SessionManager.is_logged_in():
+            with st.expander("👤 Usuario Conectado", expanded=True):
+                # Obtener información del usuario desde la sesión
+                nombre = st.session_state.get('usuario_nombre', 'Usuario')
+                email = st.session_state.get('usuario_email', 'No disponible')
+                rol = st.session_state.get('usuario_rol', 'Estándar')
+                
+                # Mostrar información del usuario
+                st.success(f"**{nombre}**")
+                
+                # Información compacta del usuario en 2 columnas
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write(f"**Rol:** {rol}")
+                
+                with col2:
+                    st.write(f"**Email:** {email}")
+                
+                # Botón de deslogueo
+                if st.button("🚪 Cerrar Sesión", key="btn_logout_sidebar"):
+                    SessionManager.logout()
+                    st.rerun()
+    
+    @staticmethod
     def load_workflow_steps() -> Dict[str, Any]:
         """
         Carga la configuración de etapas del workflow desde un archivo JSON
@@ -130,6 +159,7 @@ class SidebarComponents:
         """
         with st.sidebar:
             # Renderizar componentes del sidebar
+            SidebarComponents.render_user_info()  # Agregamos la información del usuario
             SidebarComponents.render_dataset_info()
             SidebarComponents.render_progress_checklist()
             SidebarComponents.render_reset_button()

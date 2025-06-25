@@ -269,3 +269,32 @@ def update_user_id(logger, id_usuario):
         if isinstance(handler, SQLiteHandler):
             handler.id_usuario = id_usuario
     return logger
+
+
+class Logger:
+    """Clase para facilitar el logging en la aplicación."""
+    
+    def __init__(self, component_name, id_usuario=1):
+        self.component_name = component_name
+        self.id_usuario = id_usuario
+        self.logger = setup_logger(component_name, id_usuario=id_usuario)
+    
+    def log_evento(self, accion, descripcion, recurso="", tipo="info"):
+        """Registra un evento en el log de auditoría."""
+        mensaje = descripcion
+        if recurso:
+            mensaje = f"{recurso} | {mensaje}"
+        
+        if tipo == "error":
+            self.logger.error(f"[{accion}] {mensaje}")
+        elif tipo == "warning":
+            self.logger.warning(f"[{accion}] {mensaje}")
+        else:
+            self.logger.info(f"[{accion}] {mensaje}")
+        
+        log_audit(self.id_usuario, accion, recurso, descripcion)
+    
+    def set_usuario(self, id_usuario):
+        """Actualiza el ID del usuario para los logs."""
+        self.id_usuario = id_usuario
+        update_user_id(self.logger, id_usuario)

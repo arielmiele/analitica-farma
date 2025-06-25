@@ -1,6 +1,7 @@
 import streamlit as st
 from typing import Dict, Any
 import datetime
+import pandas as pd
 
 class SessionManager:
     """
@@ -19,6 +20,7 @@ class SessionManager:
                 "carga_datos": False,
                 "configuracion": False,
                 "validacion": False,
+                "analisis_calidad": False,
                 "transformacion": False,
                 "entrenamiento": False,
                 "evaluacion": False,
@@ -144,3 +146,117 @@ class SessionManager:
             bool: True si está logueado, False en caso contrario
         """
         return st.session_state.get("logged_in", False)
+    
+    @staticmethod
+    def guardar_estado(key: str, valor: Any):
+        """
+        Guarda un valor en el estado de la sesión
+        
+        Args:
+            key (str): Nombre de la variable de estado
+            valor (Any): Valor a guardar
+        """
+        st.session_state[key] = valor
+    
+    @staticmethod
+    def obtener_estado(key: str, default: Any = None) -> Any:
+        """
+        Obtiene un valor del estado de la sesión
+        
+        Args:
+            key (str): Nombre de la variable de estado
+            default (Any, opcional): Valor por defecto si no existe la clave
+            
+        Returns:
+            Any: Valor de la variable de estado o el default
+        """
+        return st.session_state.get(key, default)
+    
+    @staticmethod
+    def cargar_dataframe():
+        """
+        Carga el dataframe actual desde la sesión
+        
+        Returns:
+            pd.DataFrame: Dataframe actual o None si no hay ninguno
+        """
+        return st.session_state.get('df', None)
+    
+    @staticmethod
+    def obtener_trigger_benchmarking():
+        """
+        Obtiene el valor actual del trigger para invalidar la caché de benchmarking.
+        Se incrementa cada vez que se fuerza un re-entrenamiento.
+        
+        Returns:
+            int: Valor actual del trigger
+        """
+        if 'benchmarking_trigger' not in st.session_state:
+            st.session_state.benchmarking_trigger = 0
+        return st.session_state.benchmarking_trigger
+    
+    @staticmethod
+    def incrementar_trigger_benchmarking():
+        """
+        Incrementa el contador del trigger para forzar un nuevo entrenamiento.
+        Invalida la caché de benchmarking al cambiar este valor.
+        """
+        if 'benchmarking_trigger' not in st.session_state:
+            st.session_state.benchmarking_trigger = 0
+        else:
+            st.session_state.benchmarking_trigger += 1
+        return st.session_state.benchmarking_trigger
+    
+    @staticmethod
+    def get_benchmarking_stats():
+        """
+        Obtiene estadísticas sobre el benchmarking actual y los entrenamientos realizados.
+        
+        Returns:
+            dict: Diccionario con estadísticas del benchmarking
+        """
+        stats = {
+            "trigger_count": st.session_state.get("benchmarking_trigger", 0),
+            "ultimo_entrenamiento": st.session_state.get("ultimo_entrenamiento", None),
+            "total_entrenamientos": st.session_state.get("total_entrenamientos", 0),
+            "ultimo_benchmarking_id": None
+        }
+          # Obtener ID del último benchmarking si existe
+        resultados = SessionManager.obtener_estado("resultados_benchmarking", None)
+        if resultados and "id" in resultados:
+            stats["ultimo_benchmarking_id"] = resultados["id"]
+            
+        return stats
+    
+    @staticmethod
+    def registrar_entrenamiento():
+        """
+        Registra un nuevo entrenamiento en las estadísticas.
+        """
+        # Incrementar contador total
+        if "total_entrenamientos" not in st.session_state:
+            st.session_state.total_entrenamientos = 1
+        else:
+            st.session_state.total_entrenamientos += 1
+            
+        # Registrar timestamp
+        st.session_state.ultimo_entrenamiento = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    @staticmethod
+    def logout() -> None:
+        """
+        Cierra la sesión del usuario actual y limpia los datos de sesión
+        """
+        for key in list(st.session_state.keys()):
+            if (isinstance(key, str) and key.startswith('usuario_')) or key in ['authenticated', 'current_user']:
+                del st.session_state[key]
+        
+        # Aseguramos que logged_in sea False
+        st.session_state.logged_in = False
+        
+        # Redirigir a la página de login
+        try:
+            st.switch_page("pages/00_Logueo.py")
+        except Exception:
+            # Si hay un error al redirigir, simplemente continuamos
+            pass
