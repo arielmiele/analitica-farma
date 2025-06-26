@@ -66,6 +66,7 @@ if SessionManager.is_logged_in():    # Definición de páginas usando st.Page (c
     recomendar_modelo = st.Page("pages/Machine Learning/08_Recomendar_Modelo.py", title="Recomendar Modelo", icon=":material/network_intelligence:")
     reporte = st.Page("pages/Reportes/07_Reporte.py", title="Reporte", icon=":material/description:")
     dashboard = st.Page("pages/Reportes/08_Dashboard.py", title="Dashboard", icon=":material/dashboard:")
+    explicar_modelo = st.Page("pages/Machine Learning/09_Explicar_Modelo.py", title="Explicar Modelo", icon=":material/psychology:")
     
     # Mostrar información del sidebar usando el componente dedicado
     SidebarComponents.render_sidebar()
@@ -74,7 +75,7 @@ if SessionManager.is_logged_in():    # Definición de páginas usando st.Page (c
         {
             "Inicio": [pagina_deslogueo],
             "Datos": [cargar_datos, configurar_datos, validar_datos, analizar_calidad],
-            "Machine Learning": [entrenar_modelos, evaluar_modelos, validacion_cruzada, recomendar_modelo],
+            "Machine Learning": [entrenar_modelos, evaluar_modelos, validacion_cruzada, recomendar_modelo, explicar_modelo],
             "Reportes & Dashboards": [reporte, dashboard]
         }
     )

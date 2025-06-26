@@ -461,16 +461,14 @@ def mostrar_recomendacion(recomendacion, resultados_benchmarking):
             st.switch_page("pages/Machine Learning/07_Validacion_Cruzada.py")
     
     with col3:
-        if st.button("📊 Generar Reporte", use_container_width=True):
-            st.switch_page("pages/Reportes/07_Reporte.py")
-    
+        if st.button("🧠 Explicar Modelo", use_container_width=True):
+            st.switch_page("pages/Machine Learning/09_Explicar_Modelo.py")
+
     st.info("""
     Una vez seleccionado el modelo, puede continuar con:
-    - Generación de un reporte completo con los resultados
     - Explicación detallada del modelo (interpretabilidad)
+    - Generación de un reporte completo con los resultados
     - Exportación del modelo para su uso en producción
-    
-    Estas funcionalidades estarán disponibles en próximas versiones.
     """)
 
 if __name__ == "__main__":

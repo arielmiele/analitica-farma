@@ -421,3 +421,4 @@ docs-private/
 *.db-wal
 *.sqlite
 *.sqlite3
+analitica_farma.db

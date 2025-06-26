@@ -7,6 +7,7 @@ import os
 import sqlite3
 from datetime import datetime
 import sys
+from typing import Optional
 
 # Importar el módulo de logging
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -442,3 +443,35 @@ def eliminar_dataset(id_dataset, db_path=None, id_usuario=1):
     finally:
         if conn is not None:
             conn.close()
+
+def cargar_datos_entrada(id_dataset: Optional[int] = None, nombre_dataset: Optional[str] = None, columna_objetivo: Optional[str] = None, db_path: Optional[str] = None):
+    """
+    Carga los datos de entrada (X, y) para explicación de modelos.
+    Args:
+        id_dataset (int): ID del dataset a cargar (opcional)
+        nombre_dataset (str): Nombre del dataset (opcional)
+        columna_objetivo (str): Nombre de la variable objetivo (si no se especifica, se intenta inferir)
+        db_path (str): Ruta a la base de datos (opcional)
+    Returns:
+        X (pd.DataFrame): Variables predictoras
+        y (pd.Series): Variable objetivo
+    """
+    try:
+        df, metadatos = obtener_dataset(id_dataset=id_dataset, nombre_dataset=nombre_dataset, db_path=db_path)
+        if df is None:
+            raise ValueError(metadatos.get('error', 'No se pudo cargar el dataset.'))
+        # Inferir columna objetivo si no se especifica
+        if not columna_objetivo:
+            posibles_objetivo = [col for col in df.columns if col.lower() in ['target', 'objetivo', 'y', 'clase']]
+            if posibles_objetivo:
+                columna_objetivo = posibles_objetivo[0]
+            else:
+                raise ValueError("No se pudo inferir la columna objetivo. Especifíquela explícitamente.")
+        if columna_objetivo not in df.columns:
+            raise ValueError(f"La columna objetivo '{columna_objetivo}' no existe en el dataset.")
+        X = df.drop(columns=[columna_objetivo])
+        y = df[columna_objetivo]
+        return X, y
+    except Exception as e:
+        logger.error(f"Error en cargar_datos_entrada: {str(e)}")
+        return None, None
