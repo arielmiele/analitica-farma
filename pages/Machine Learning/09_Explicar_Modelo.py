@@ -3,7 +3,6 @@ from src.modelos.explicador import obtener_importancias_shap
 from src.modelos.entrenador import cargar_modelo_entrenado, preparar_datos_para_ml
 from src.datos.cargador import cargar_datos_entrada
 from src.ui.explicacion import mostrar_grafico_importancias
-import pandas as pd
 from src.state.session_manager import SessionManager
 
 st.set_page_config(page_title="Explicación del Modelo", page_icon="🧠", layout="wide")
