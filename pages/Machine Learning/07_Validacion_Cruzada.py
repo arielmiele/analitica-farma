@@ -33,12 +33,6 @@ from src.ui.validacion_cruzada.analisis import (
 
 def main():
     """Función principal de la página."""
-    st.set_page_config(
-        page_title="Validación Cruzada - Analítica Farma",
-        page_icon="🔬",
-        layout="wide"
-    )
-    
     st.title("🔬 Validación Cruzada y Detección de Overfitting")
     
     # Mostrar introducción teórica

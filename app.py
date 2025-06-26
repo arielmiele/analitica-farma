@@ -62,8 +62,8 @@ if SessionManager.is_logged_in():    # Definición de páginas usando st.Page (c
     analizar_calidad = st.Page("pages/Datos/04_Analizar_Calidad.py", title="Analizar Calidad", icon=":material/analytics:")
     entrenar_modelos = st.Page("pages/Machine Learning/05_Entrenar_Modelos.py", title="Entrenar Modelos", icon=":material/model_training:")
     evaluar_modelos = st.Page("pages/Machine Learning/06_Evaluar_Modelos.py", title="Evaluar Modelos", icon=":material/network_intel_node:")
-    recomendar_modelo = st.Page("pages/Machine Learning/08_Recomendar_Modelo.py", title="Recomendar Modelo", icon=":material/network_intelligence:")
     validacion_cruzada = st.Page("pages/Machine Learning/07_Validacion_Cruzada.py", title="Validación Cruzada", icon=":material/science:")
+    recomendar_modelo = st.Page("pages/Machine Learning/08_Recomendar_Modelo.py", title="Recomendar Modelo", icon=":material/network_intelligence:")
     reporte = st.Page("pages/Reportes/07_Reporte.py", title="Reporte", icon=":material/description:")
     dashboard = st.Page("pages/Reportes/08_Dashboard.py", title="Dashboard", icon=":material/dashboard:")
     
@@ -74,7 +74,7 @@ if SessionManager.is_logged_in():    # Definición de páginas usando st.Page (c
         {
             "Inicio": [pagina_deslogueo],
             "Datos": [cargar_datos, configurar_datos, validar_datos, analizar_calidad],
-            "Machine Learning": [entrenar_modelos, evaluar_modelos, recomendar_modelo, validacion_cruzada],
+            "Machine Learning": [entrenar_modelos, evaluar_modelos, validacion_cruzada, recomendar_modelo],
             "Reportes & Dashboards": [reporte, dashboard]
         }
     )

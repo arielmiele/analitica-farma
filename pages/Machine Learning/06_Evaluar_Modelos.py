@@ -15,7 +15,8 @@ import io
 # Importar módulos propios
 from src.modelos.evaluador import (
     obtener_ultimos_benchmarkings, 
-    diagnosticar_visualizaciones
+    diagnosticar_visualizaciones,
+    comparar_metricas_regresion
 )
 from src.modelos.visualizador import (
     generar_matriz_confusion, 
@@ -881,22 +882,7 @@ def main():
                                         )
                                         
                                         # Crear DataFrame para comparar métricas de los modelos
-                                        metricas_comp = pd.DataFrame()
-                                        
-                                        for nombre, info in modelos_dict.items():
-                                            y_pred = info['modelo'].predict(X_test)
-                                            from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
-                                            
-                                            r2 = r2_score(y_test, y_pred)
-                                            mse = mean_squared_error(y_test, y_pred)
-                                            rmse = np.sqrt(mse)
-                                            mae = mean_absolute_error(y_test, y_pred)
-                                            
-                                            # Añadir métricas al DataFrame de comparación
-                                            metricas_comp[nombre] = [r2, mse, rmse, mae]
-                                        
-                                        # Establecer nombres de filas para las métricas
-                                        metricas_comp.index = pd.Index(['R²', 'MSE', 'RMSE', 'MAE'])
+                                        metricas_comp = comparar_metricas_regresion(modelos_dict, X_test, y_test)
                                         
                                         # Mostrar la tabla de métricas comparativas
                                         st.dataframe(metricas_comp)
@@ -945,7 +931,7 @@ def main():
                     st.switch_page("pages/Machine Learning/05_Entrenar_Modelos.py")
             
             with col2:
-                if st.button("� Validación Cruzada", use_container_width=True):
+                if st.button("🧠 Validación Cruzada", use_container_width=True):
                     # Guardar instrucción de navegación en la sesión
                     session.guardar_estado("navegacion", "Validacion_Cruzada")
                     # Redirigir a la página de validación cruzada
