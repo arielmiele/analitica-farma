@@ -25,28 +25,28 @@
             "pagina": "pages/Datos/04_Analizar_Calidad.py"
         },
         {
-            "id": "transformacion",
-            "nombre": "Transformaciones",
-            "icono": "5️⃣",
-            "pagina": "pages/Datos/05_Transformar_Datos.py"
-        },
-        {
             "id": "entrenamiento",
             "nombre": "Entrenamiento",
-            "icono": "6️⃣",
-            "pagina": "pages/Machine Learning/04_Entrenar_Modelos.py"
+            "icono": "5️⃣",
+            "pagina": "pages/Machine Learning/05_Entrenar_Modelos.py"
         },
         {
             "id": "evaluacion",
             "nombre": "Evaluación",
+            "icono": "6️⃣",
+            "pagina": "pages/Machine Learning/06_Evaluar_Modelos.py"
+        },
+        {
+            "id": "validacion_cruzada",
+            "nombre": "Validación Cruzada",
             "icono": "7️⃣",
-            "pagina": "pages/Machine Learning/05_Evaluar_Modelos.py"
+            "pagina": "pages/Machine Learning/07_Validacion_Cruzada.py"
         },
         {
             "id": "recomendacion",
             "nombre": "Recomendación",
             "icono": "8️⃣",
-            "pagina": "pages/Machine Learning/06_Recomendar_Modelo.py"
+            "pagina": "pages/Machine Learning/08_Recomendar_Modelo.py"
         }
     ]
 }

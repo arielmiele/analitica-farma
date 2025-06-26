@@ -272,7 +272,7 @@ else:
                         log_audit(usuario_id, "NAVEGACIÓN", "entrenamiento de modelos", 
                                 "Continuando a entrenamiento de modelos")
                         
-                        st.switch_page("pages/Machine Learning/04_Entrenar_Modelos.py")
+                        st.switch_page("pages/Machine Learning/05_Entrenar_Modelos.py")
     
     # PASO 1: Análisis detallado
     elif st.session_state.paso_calidad == 1:
