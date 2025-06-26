@@ -14,7 +14,7 @@ from .visualizacion import (
 )
 from .recomendaciones import (
     mostrar_recomendaciones_mejora,
-    mostrar_recomendaciones_industria
+    mostrar_recomendaciones_industria_ui
 )
 
 __all__ = [
@@ -38,5 +38,5 @@ __all__ = [
     
     # Módulo recomendaciones
     "mostrar_recomendaciones_mejora",
-    "mostrar_recomendaciones_industria"
+    "mostrar_recomendaciones_industria_ui"
 ]

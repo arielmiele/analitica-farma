@@ -1,105 +1,85 @@
 """
-Módulo de recomendaciones para Validación Cruzada - Analítica Farma
-Contiene funciones para mostrar recomendaciones de mejora específicas para modelos y la industria farmacéutica.
+Módulo de presentación de recomendaciones para Validación Cruzada - Analítica Farma
+Contiene únicamente funciones de UI para mostrar recomendaciones generadas por la capa de modelos.
 """
 
 import streamlit as st
+from src.modelos.recomendador import generar_recomendaciones_completas
 
 
 def mostrar_recomendaciones_mejora(diagnostico, modelo, tipo_problema):
     """Muestra recomendaciones específicas para mejorar el modelo."""
     st.subheader("💡 Recomendaciones para Mejora")
     
-    # Obtener recomendaciones del resultado del análisis (desde el evaluador)
-    recomendaciones_del_analisis = modelo.get('recomendaciones', [])
+    # Generar todas las recomendaciones usando la capa de modelos
+    recomendaciones_completas = generar_recomendaciones_completas(diagnostico, modelo, tipo_problema)
     
-    # También obtener las del diagnóstico si están disponibles
-    recomendaciones_diagnostico = diagnostico.get('recomendaciones', [])
+    # Verificar si hay error
+    if 'error' in recomendaciones_completas:
+        st.error(f"❌ {recomendaciones_completas['error']}")
+        return
     
-    # Combinar todas las recomendaciones disponibles
-    todas_recomendaciones = recomendaciones_del_analisis + recomendaciones_diagnostico
+    # Obtener información del diagnóstico
+    tipo_diag = recomendaciones_completas.get('tipo_diagnostico', 'balanceado')
     
-    # Determinar el tipo de problema basado en el diagnóstico
-    overfitting = diagnostico.get('overfitting', 'desconocido')
-    underfitting = diagnostico.get('underfitting', 'desconocido')
-    
-    # Mostrar recomendaciones en categorías
-    if overfitting == 'posible':
+    # Mostrar título según el tipo de diagnóstico
+    if tipo_diag == 'overfitting':
         st.markdown("### 🔥 Estrategias para Reducir Overfitting")
-        tipo_diag = 'overfitting'
-    elif underfitting == 'posible':
+    elif tipo_diag == 'underfitting':
         st.markdown("### 📈 Estrategias para Reducir Underfitting")
-        tipo_diag = 'underfitting'
     else:
         st.markdown("### ✨ Estrategias para Optimización Adicional")
-        tipo_diag = 'balanceado'
     
-    # Mostrar recomendaciones básicas si están disponibles
-    if todas_recomendaciones:
-        st.markdown("#### Recomendaciones específicas:")
-        for i, recomendacion in enumerate(todas_recomendaciones, 1):
-            with st.expander(f"💡 Recomendación {i}", expanded=i <= 3):
+    # Mostrar recomendaciones específicas del análisis
+    recomendaciones_especificas = recomendaciones_completas.get('recomendaciones_especificas', [])
+    if recomendaciones_especificas:
+        st.markdown("#### Recomendaciones específicas del análisis:")
+        for i, recomendacion in enumerate(recomendaciones_especificas, 1):
+            with st.expander(f"💡 Recomendación específica {i}", expanded=i <= 3):
                 st.markdown(recomendacion)
-    else:
-        st.info("📋 No hay recomendaciones específicas disponibles")
-        # Mostrar recomendaciones genéricas basadas en el diagnóstico
-        mostrar_recomendaciones_genericas(tipo_diag)
     
-    # Recomendaciones adicionales para la industria farmacéutica
-    mostrar_recomendaciones_industria(tipo_diag)
-
-
-def mostrar_recomendaciones_genericas(tipo_diag):
-    """Muestra recomendaciones genéricas basadas en el tipo de diagnóstico."""
-    if tipo_diag == 'overfitting':
-        recomendaciones_genericas = [
-            "🔄 Considere usar regularización (L1/L2)",
-            "📊 Aumente el tamaño del dataset de entrenamiento", 
-            "🌳 Reduzca la complejidad del modelo",
-            "✂️ Aplique técnicas de feature selection"
-        ]
-    elif tipo_diag == 'underfitting':
-        recomendaciones_genericas = [
-            "🔧 Aumente la complejidad del modelo",
-            "🎯 Agregue más características relevantes",
-            "⚙️ Ajuste los hiperparámetros", 
-            "🔍 Verifique la calidad de los datos"
-        ]
-    else:
-        recomendaciones_genericas = [
-            "✅ El modelo muestra un comportamiento balanceado",
-            "🔍 Considere realizar ajuste fino de hiperparámetros",
-            "📈 Monitoree el rendimiento en producción",
-            "🎯 Evalúe la adición de características adicionales"
-        ]
+    # Mostrar recomendaciones genéricas
+    recomendaciones_genericas = recomendaciones_completas.get('recomendaciones_genericas', [])
+    if recomendaciones_genericas:
+        st.markdown("#### Recomendaciones generales:")
+        for i, rec in enumerate(recomendaciones_genericas, 1):
+            with st.expander(f"🎯 Recomendación general {i}", expanded=False):
+                st.markdown(rec)
     
-    st.markdown("#### Recomendaciones generales:")
-    for i, rec in enumerate(recomendaciones_genericas, 1):
-        with st.expander(f"🎯 Recomendación general {i}", expanded=False):
-            st.markdown(rec)
+    # Mostrar recomendaciones para la industria farmacéutica
+    mostrar_recomendaciones_industria_ui(recomendaciones_completas)
 
 
-def mostrar_recomendaciones_industria(tipo_problema):
-    """Muestra recomendaciones específicas para la industria farmacéutica."""
+def mostrar_recomendaciones_industria_ui(recomendaciones_completas):
+    """Presenta las recomendaciones específicas para la industria farmacéutica."""
+    recomendaciones_industria = recomendaciones_completas.get('recomendaciones_industria', {})
+    tipo_diag = recomendaciones_completas.get('tipo_diagnostico', 'general')
+    
     with st.expander("🏭 Consideraciones para la Industria Farmacéutica", expanded=False):
+        st.markdown("### Aplicación en Procesos Biotecnológicos")
+        
+        # Mostrar recomendaciones específicas del tipo de diagnóstico
+        if tipo_diag in recomendaciones_industria:
+            st.markdown(f"#### Para {tipo_diag.title()}:")
+            recomendaciones_especificas = recomendaciones_industria[tipo_diag]
+            for rec in recomendaciones_especificas:
+                st.markdown(f"- {rec}")
+        
+        # Mostrar recomendaciones generales de la industria
+        if 'general' in recomendaciones_industria:
+            st.markdown("#### Consideraciones Generales:")
+            recomendaciones_generales = recomendaciones_industria['general']
+            for rec in recomendaciones_generales:
+                st.markdown(f"- {rec}")
+        
+        # Información adicional para compliance
         st.markdown("""
-        ### Aplicación en Procesos Biotecnológicos
-        
-        #### Para Overfitting:
-        - **📋 Documentación**: Registre todas las correcciones en el batch record
-        - **🔄 Validación cruzada**: Implemente validación con datos de múltiples lotes
-        - **📊 Monitoreo continuo**: Establezca alertas para drift del modelo en producción
-        - **👥 Revisión por pares**: Involucre a QA en la validación del modelo
-        
-        #### Para Underfitting:
-        - **🔬 Revisión de variables**: Incluya más CPPs (Critical Process Parameters)
-        - **📈 Aumento de datos**: Considere datos históricos de sitios similares
-        - **🧪 Experimentos dirigidos**: Planifique experimentos para llenar gaps de datos
-        - **🎯 Refinamiento de objetivos**: Revise si los KPIs están bien definidos
-        
-        #### Para Modelos Balanceados:
-        - **✅ Validación final**: Proceda con validación en lotes piloto
-        - **📝 Documentación GMP**: Prepare documentación para transferencia
-        - **🔍 Monitoreo de performance**: Implemente sistema de seguimiento continuo
-        - **🎓 Entrenamiento**: Capacite al personal en el uso del modelo
+        ---
+        #### � Checklist de Compliance:
+        - ✅ Documentación completa en batch records
+        - ✅ Validación según estándares FDA/EMA  
+        - ✅ Trazabilidad completa de cambios
+        - ✅ Revisión y aprobación por QA
+        - ✅ Plan de mantenimiento del modelo
+        - ✅ Procedimientos de respaldo y recuperación
         """)

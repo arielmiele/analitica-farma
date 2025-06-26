@@ -7,16 +7,18 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import confusion_matrix, roc_curve, auc
-from sklearn.preprocessing import label_binarize
-import scipy.sparse as sp
 import io
 
 # Importar módulos propios
 from src.modelos.evaluador import (
     obtener_ultimos_benchmarkings, 
     diagnosticar_visualizaciones,
-    comparar_metricas_regresion
+    comparar_metricas_regresion,
+    calcular_matriz_confusion_detallada,
+    calcular_curvas_roc_completas,
+    crear_dataframe_comparacion_regresion,
+    generar_datos_grafico_comparacion_regresion,
+    calcular_metricas_modelo_individual
 )
 from src.modelos.visualizador import (
     generar_matriz_confusion, 
@@ -425,8 +427,8 @@ def main():
                                 )
                             
                             with col2:
-                                # Calcular matriz para interpretación
-                                cm = confusion_matrix(y_test, y_pred, normalize=opciones_norm[tipo_norm])
+                                # Calcular matriz para interpretación usando función del modelo
+                                cm = calcular_matriz_confusion_detallada(y_test, y_pred, normalize=opciones_norm[tipo_norm])
                                 interpretacion = generar_interpretacion_matriz_confusion(cm, [str(c) for c in clases])
                                 st.markdown(interpretacion)
                         
@@ -460,29 +462,13 @@ def main():
                             )
                             
                         with col2:
-                            # Calcular AUC para interpretación
-                            if es_multiclase:
-                                # Para multiclase, promediamos el AUC de cada clase
-                                y_bin = label_binarize(y_test, classes=np.unique(y_test))
-                                # Convert to dense array if it's a sparse matrix
-                                if sp.issparse(y_bin):
-                                    y_bin = sp.csr_matrix(y_bin).toarray()
-                                else:
-                                    y_bin = np.array(y_bin)
-                                # Initialize aucs list
-                                aucs = []
-                                for i in range(len(clases)):
-                                    fpr, tpr, _ = roc_curve(y_bin[:, i], y_prob[:, i])
-                                    aucs.append(auc(fpr, tpr))
-                                auc_valor = np.mean(aucs)
+                            # Calcular AUC para interpretación usando función del modelo
+                            curvas_roc_data = calcular_curvas_roc_completas(y_test, y_prob, clases)
+                            
+                            if curvas_roc_data['es_multiclase']:
+                                auc_valor = curvas_roc_data['auc_promedio']
                             else:
-                                # Para binario, usamos la probabilidad de la clase positiva
-                                if len(y_prob.shape) > 1 and y_prob.shape[1] > 1:
-                                    y_prob_pos = y_prob[:, 1]
-                                else:
-                                    y_prob_pos = y_prob
-                                fpr, tpr, _ = roc_curve(y_test, y_prob_pos)
-                                auc_valor = auc(fpr, tpr)
+                                auc_valor = curvas_roc_data['auc_valor']
                             
                             interpretacion = generar_interpretacion_curva_roc(float(auc_valor))
                             st.markdown(interpretacion)
@@ -839,25 +825,22 @@ def main():
                                 
                                 if modelos_dict:
                                     try:
-                                        # Crear DataFrame para comparar predicciones
-                                        pred_df = pd.DataFrame()
-                                        pred_df['Real'] = y_test
-                                            
-                                        for nombre, info in modelos_dict.items():
-                                            pred_df[nombre] = info['modelo'].predict(X_test)
+                                        # Usar función del modelo para crear datos de comparación
+                                        datos_comparacion = generar_datos_grafico_comparacion_regresion(
+                                            modelos_dict, X_test, y_test
+                                        )
                                         
                                         # Mostrar gráfico de dispersión
                                         fig, ax = plt.subplots(figsize=(10, 6))
                                         
                                         # Graficar línea de referencia (predicción perfecta)
-                                        min_val = pred_df['Real'].min()
-                                        max_val = pred_df['Real'].max()
-                                        ax.plot([min_val, max_val], [min_val, max_val], 
+                                        rango = datos_comparacion['rango_referencia']
+                                        ax.plot([rango['min'], rango['max']], [rango['min'], rango['max']], 
                                                 'k--', label='Predicción perfecta')
                                         
-                                        # Graficar predicciones de cada modelo
-                                        for nombre in modelos_dict.keys():
-                                            ax.scatter(pred_df['Real'], pred_df[nombre], label=nombre)
+                                        # Graficar predicciones de cada modelo usando datos del modelo
+                                        for nombre, datos in datos_comparacion['datos_modelos'].items():
+                                            ax.scatter(datos['x'], datos['y'], label=nombre)
                                         
                                         # Añadir etiquetas y leyenda
                                         ax.set_xlabel('Valores reales')
@@ -881,7 +864,7 @@ def main():
                                             mime="image/png"
                                         )
                                         
-                                        # Crear DataFrame para comparar métricas de los modelos
+                                        # Usar función del modelo para comparar métricas
                                         metricas_comp = comparar_metricas_regresion(modelos_dict, X_test, y_test)
                                         
                                         # Mostrar la tabla de métricas comparativas
