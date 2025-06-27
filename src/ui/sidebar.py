@@ -1,8 +1,4 @@
 import streamlit as st
-import json
-import os
-from typing import Dict, Any
-
 from src.state.session_manager import SessionManager
 
 class SidebarComponents:
@@ -14,58 +10,18 @@ class SidebarComponents:
     @staticmethod
     def render_user_info() -> None:
         """
-        Renderiza la información del usuario conectado en el sidebar
+        Renderiza la información persistente del usuario conectado en el sidebar
         """
         if SessionManager.is_logged_in():
             with st.expander("👤 Usuario Conectado", expanded=True):
-                # Obtener información del usuario desde la sesión
-                nombre = st.session_state.get('usuario_nombre', 'Usuario')
-                email = st.session_state.get('usuario_email', 'No disponible')
-                rol = st.session_state.get('usuario_rol', 'Estándar')
-                
-                # Mostrar información del usuario
-                st.success(f"**{nombre}**")
-                
-                # Información compacta del usuario en 2 columnas
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"**Rol:** {rol}")
-                
-                with col2:
-                    st.write(f"**Email:** {email}")
-                
-                # Botón de deslogueo
+                user = SessionManager.get_user_info()
+                st.write("**ID:**", user["usuario_id"])
+                st.write("**Nombre:**", user["usuario_nombre"])
+                st.write("**Rol:**", user["usuario_rol"])
+                st.write("**Email:**", user["usuario_email"])
                 if st.button("🚪 Cerrar Sesión", key="btn_logout_sidebar"):
                     SessionManager.logout()
                     st.rerun()
-    
-    @staticmethod
-    def load_workflow_steps() -> Dict[str, Any]:
-        """
-        Carga la configuración de etapas del workflow desde un archivo JSON
-        
-        Returns:
-            Dict[str, Any]: Configuración de las etapas
-        """
-        try:
-            config_path = os.path.join("src", "config", "workflow_steps.json")
-            with open(config_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            # Si hay un error, devolver un diccionario con configuración por defecto
-            print(f"Error al cargar configuración: {str(e)}")
-            return {
-                "etapas": [
-                    {"id": "carga_datos", "nombre": "Carga de datos", "icono": "1️⃣"},
-                    {"id": "configuracion", "nombre": "Configuración", "icono": "2️⃣"},
-                    {"id": "validacion", "nombre": "Validación", "icono": "3️⃣"},
-                    {"id": "transformacion", "nombre": "Transformaciones", "icono": "4️⃣"},
-                    {"id": "entrenamiento", "nombre": "Entrenamiento", "icono": "5️⃣"},
-                    {"id": "evaluacion", "nombre": "Evaluación", "icono": "6️⃣"},
-                    {"id": "recomendacion", "nombre": "Recomendación", "icono": "7️⃣"}
-                ]
-            }
     
     @staticmethod
     def render_dataset_info() -> None:
@@ -77,7 +33,7 @@ class SidebarComponents:
             
             if dataset_info:
                 # Mostrar nombre con estilo más compacto
-                st.success(f"**{dataset_info['nombre']}**")
+                st.write(f"Nombre: **{dataset_info['nombre']}**")
                 
                 # Información compacta del dataset en 2 columnas
                 col1, col2 = st.columns(2)
@@ -107,6 +63,15 @@ class SidebarComponents:
                     # Mostrar predictores en forma compacta
                     if dataset_info.get('num_predictores', 0) > 0:
                         st.write(f"**Predictores:** {dataset_info['num_predictores']} variables")
+                        # Mostrar los primeros 3-5 predictores y un expander para ver todos
+                        predictores = dataset_info.get('lista_predictores', [])
+                        if predictores:
+                            max_show = 5
+                            primeros = predictores[:max_show]
+                            st.write(", ".join([f"`{p}`" for p in primeros]) + (f" ... (+{len(predictores)-max_show} más)" if len(predictores) > max_show else ""))
+                            if len(predictores) > max_show:
+                                with st.expander("Ver todos los predictores"):
+                                    st.write(", ".join([f"`{p}`" for p in predictores]))
             else:
                 st.info("No hay dataset cargado")
                 
@@ -116,50 +81,11 @@ class SidebarComponents:
                         st.switch_page("pages/Datos/01_Cargar_Datos.py")
     
     @staticmethod
-    def render_progress_checklist() -> None:
-        """
-        Renderiza el checklist de progreso del workflow
-        """
-        if not SessionManager.is_dataset_loaded():
-            return
-            
-        with st.expander("✅ Progreso del Análisis", expanded=True):
-            # Cargar las etapas desde el archivo de configuración
-            workflow_config = SidebarComponents.load_workflow_steps()
-            progress_status = SessionManager.get_progress_status()
-            
-            # Crear checklist con el estado actual en formato compacto
-            for etapa in workflow_config["etapas"]:
-                etapa_id = etapa["id"]
-                etapa_nombre = f"{etapa['icono']} {etapa['nombre']}"
-                completada = progress_status.get(etapa_id, False)
-                
-                icono = "✅" if completada else "⬜"
-                st.write(f"{icono} {etapa_nombre}")
-    
-    @staticmethod
-    def render_reset_button() -> None:
-        """
-        Renderiza el botón para reiniciar el análisis
-        """
-        if not SessionManager.is_dataset_loaded():
-            return
-            
-        # Verificar si hay al menos un paso completado
-        progress_status = SessionManager.get_progress_status()
-        if any(progress_status.values()):
-            if st.button("🔄 Reiniciar Análisis", key="btn_reiniciar"):
-                SessionManager.reset_analysis()
-                st.rerun()
-    
-    @staticmethod
     def render_sidebar() -> None:
         """
         Renderiza el sidebar completo
         """
         with st.sidebar:
-            # Renderizar componentes del sidebar
-            SidebarComponents.render_user_info()  # Agregamos la información del usuario
+            # Renderizar solo los componentes esenciales
+            SidebarComponents.render_user_info()  # Información del usuario
             SidebarComponents.render_dataset_info()
-            SidebarComponents.render_progress_checklist()
-            SidebarComponents.render_reset_button()

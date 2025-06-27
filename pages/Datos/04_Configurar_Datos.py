@@ -29,7 +29,7 @@ if 'paso_configuracion' not in st.session_state:
     st.session_state.paso_configuracion = 0  # 0: inicio, 1: mapeo, 2: resultado
 
 # Título y descripción de la página
-st.title("🎯 Configurar Estructura de Datos")
+st.title("🎯 Configurar Datos para Modelado")
 
 st.markdown("""
 Esta página te permite configurar la estructura de tus datos y definir la variable objetivo 
@@ -223,7 +223,7 @@ else:
                 st.rerun()
         
         with col2:
-            if st.button("➡️ Continuar con validación", use_container_width=True):
+            if st.button("➡️ Analizar Calidad", use_container_width=True):
                 # Marcar etapa de configuración como completada
                 SessionManager.update_progress("configuracion", True)
                 
@@ -231,7 +231,7 @@ else:
                 log_audit(
                     usuario_id, 
                     "NAVEGACION", 
-                    "validacion", 
-                    f"Continuar con validación de datos para {st.session_state.filename}"
+                    "analizar_calidad", 
+                    f"Continuar con análisis de calidad para {st.session_state.filename}"
                 )
-                st.switch_page("pages/datos/03_Validar_Datos.py")
+                st.switch_page("pages/Datos/03_Analizar_Calidad.py")

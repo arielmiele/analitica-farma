@@ -4,6 +4,7 @@ Módulo para estandarizar formatos y unidades en los datos.
 import pandas as pd
 import re
 import logging
+import streamlit as st
 
 # Obtener el logger
 logger = logging.getLogger("formateador")
@@ -234,3 +235,27 @@ def corregir_tipos_datos(df, columna, tipo_destino):
     except Exception as e:
         logger.error(f"Error al corregir tipo de datos en {columna}: {str(e)}")
         return df_resultado
+
+def persistir_dataframe(df):
+    """
+    Actualiza el DataFrame en memoria en session_state para que toda la app use la versión más reciente.
+    Args:
+        df (pd.DataFrame): DataFrame actualizado
+    Returns:
+        dict: {'success': bool, 'message': str, 'error': str (opcional)}
+    """
+    try:
+        st.session_state['df'] = df
+        logger.info("DataFrame actualizado en memoria (session_state['df']) correctamente.")
+        # Preparado para futura integración con Snowflake u otros destinos
+        return {
+            'success': True,
+            'message': 'DataFrame actualizado en memoria correctamente.'
+        }
+    except Exception as e:
+        logger.error(f"Error al actualizar el DataFrame en memoria: {str(e)}")
+        return {
+            'success': False,
+            'message': 'Error al actualizar el DataFrame en memoria.',
+            'error': str(e)
+        }

@@ -129,7 +129,7 @@ if st.button("Explicar modelo"):
             st.switch_page("pages/Machine Learning/08_Recomendar_Modelo.py")
     with col2:
         if st.button("📊 Generar Reporte", use_container_width=True):
-            st.switch_page("pages/Reportes/07_Reporte.py")
+            st.switch_page("pages/Reportes/10_Reporte.py")
 
     st.info(
         """
@@ -139,3 +139,24 @@ if st.button("Explicar modelo"):
         """,
         icon="📄"
     )
+
+# Si ocurre un error crítico en la carga, mostrar depuración y detener ejecución
+if X is None or (hasattr(X, 'empty') and X.empty):
+    st.warning("No se pudo cargar el dataset o está vacío. Revisa la información de depuración abajo.")
+    with st.expander("🔧 Depuración (siempre visible si hay error de carga)", expanded=True):
+        st.markdown("**Depuración de estado de sesión y dataset**")
+        debug_data = [
+            ("variable_objetivo en sesión", st.session_state.get('variable_objetivo', None)),
+            ("Columnas en X", list(X.columns) if X is not None else None),
+            ("y (nombre y tipo)", f"{getattr(y, 'name', None)} | {type(y)}" if y is not None else None),
+            ("info", info),
+            ("X shape", X.shape if X is not None else None),
+            ("y shape", y.shape if y is not None else None),
+            ("Modelos disponibles", list(dic_modelos.keys())),
+            ("Modelo seleccionado", modelo_id),
+        ]
+        st.table([[k, v if v not in [None, [], ''] else ':red[None o vacío]'] for k, v in debug_data])
+        st.markdown("**Estado de sesión relevante:**")
+        st.json({k: v for k, v in st.session_state.items() if k in ['df', 'filename', 'variable_objetivo', 'metodo_carga', 'upload_timestamp']})
+        st.info("Si 'variable_objetivo' es None o las columnas están vacías, revisa la configuración de datos y asegúrate de completar el paso de configuración antes de explicar el modelo.")
+    st.stop()

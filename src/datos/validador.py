@@ -246,18 +246,18 @@ def es_posible_fecha(texto):
 
 def validar_fechas(df):
     """
-    Valida las columnas de tipo fecha y detecta formatos inconsistentes.
+    Valida columnas de fecha para asegurar que sean útiles en ML, no solo formato.
     
     Args:
         df (pd.DataFrame): DataFrame con los datos
         
     Returns:
-        list: Lista de diccionarios con errores detectados
+        list: Lista de advertencias/errores relevantes para ML
     """
     errores = []
     
     try:
-        # Buscar columnas que son fechas o tienen nombres que sugieren fechas
+        # Detectar columnas candidatas a fecha
         posibles_fechas = []
         
         # Columnas que ya son datetime
@@ -272,224 +272,83 @@ def validar_fechas(df):
         
         # Analizar cada columna potencial de fecha
         for columna in posibles_fechas:
-            # Si ya es datetime, verificar zonas horarias inconsistentes
-            if pd.api.types.is_datetime64_dtype(df[columna]):
-                # Verificar si hay información de zona horaria y si es consistente
-                tiene_tz = df[columna].dt.tz is not None
-                if not tiene_tz:
-                    errores.append({
-                        'columna': columna,
-                        'mensaje': "Columna de fecha sin zona horaria especificada",
-                        'sugerencia': "Considerar agregar información de zona horaria para análisis temporal preciso",
-                        'formatos_disponibles': ['UTC', 'Local', 'GMT', 'America/New_York', 'Europe/Madrid']
-                    })
-            else:
-                # Para columnas que no son datetime pero podrían contener fechas
-                valores_no_nulos = df[columna].dropna()
-                if len(valores_no_nulos) > 0:
-                    # Convertir a string para análisis
-                    valores_str = valores_no_nulos.astype(str)
-                    
-                    # Identificar formatos de fecha diferentes
-                    formatos_detectados = detectar_formatos_fecha(valores_str)
-                    
-                    if len(formatos_detectados) > 1:
-                        # Hay múltiples formatos en la misma columna
-                        ejemplos = valores_str.sample(min(3, len(valores_str))).tolist()
-                        errores.append({
-                            'columna': columna,
-                            'mensaje': f"Formatos de fecha inconsistentes detectados ({len(formatos_detectados)} formatos diferentes)",
-                            'ejemplos': ejemplos,
-                            'formato_sugerido': 'ISO 8601 (YYYY-MM-DD)',
-                            'formatos_disponibles': ['ISO 8601 (YYYY-MM-DD)', 'DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY/MM/DD']
-                        })
-                    elif len(formatos_detectados) == 1 and not pd.api.types.is_datetime64_dtype(df[columna]):
-                        # Un solo formato pero no está como datetime
-                        errores.append({
-                            'columna': columna,
-                            'mensaje': "Columna contiene fechas pero no está en formato datetime",
-                            'sugerencia': "Convertir a tipo datetime para análisis temporal",
-                            'formato_sugerido': 'ISO 8601 (YYYY-MM-DD)',
-                            'formatos_disponibles': ['ISO 8601 (YYYY-MM-DD)', 'DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY/MM/DD']
-                        })
+            serie = df[columna]
+            
+            # Intentar convertir a datetime
+            serie_fecha = pd.to_datetime(serie, errors='coerce')
+            
+            n_nulos = serie_fecha.isna().sum()
+            total = len(serie_fecha)
+            n_unicos = serie_fecha.nunique(dropna=True)
+            rango = None
+            if not serie_fecha.dropna().empty:
+                try:
+                    rango = (serie_fecha.max() - serie_fecha.min()).days
+                except Exception:
+                    rango = None
+            
+            # 1. Demasiados nulos
+            if n_nulos > total * 0.2:
+                errores.append({
+                    'columna': columna,
+                    'mensaje': f"Más del 20% de los valores de fecha son nulos o inválidos ({n_nulos} de {total}).",
+                    'sugerencia': "Imputar o eliminar filas nulas para usar la fecha en ML."
+                })
+            
+            # 2. No convertible a fecha
+            if n_nulos == total:
+                errores.append({
+                    'columna': columna,
+                    'mensaje': "Ningún valor es convertible a fecha.",
+                    'sugerencia': "Revisar el formato o el contenido de la columna."
+                })
+                continue
+            
+            # 3. Todos los valores únicos (posible identificador)
+            if n_unicos == total - n_nulos:
+                errores.append({
+                    'columna': columna,
+                    'mensaje': "Todos los valores de fecha son únicos. Probablemente es un identificador y no aporta valor para ML.",
+                    'sugerencia': "Evite usar esta columna como predictor. Considere extraer componentes como año, mes, día."
+                })
+            
+            # 4. Sin variabilidad temporal
+            if rango is not None and rango < 2:
+                errores.append({
+                    'columna': columna,
+                    'mensaje': f"La columna de fecha tiene muy poca variabilidad temporal (rango: {rango} días).",
+                    'sugerencia': "Verifique si la columna aporta información útil para ML."
+                })
+            
+            # 5. Fechas futuras (opcional, solo si la mayoría son futuras)
+            hoy = pd.Timestamp.today()
+            n_futuras = (serie_fecha > hoy).sum()
+            if n_futuras > total * 0.5:
+                errores.append({
+                    'columna': columna,
+                    'mensaje': "Más del 50% de las fechas están en el futuro.",
+                    'sugerencia': "Verifique si esto tiene sentido para el dominio del problema."
+                })
+            
+            # 6. Sugerir extracción de componentes si la columna es válida
+            if n_nulos < total * 0.2 and n_unicos < total * 0.9 and rango is not None and rango >= 2:
+                errores.append({
+                    'columna': columna,
+                    'mensaje': "Columna de fecha válida para ML, pero se recomienda extraer variables como año, mes, día, día de la semana, o diferencias temporales.",
+                    'sugerencia': "Utilice la función de transformación para crear variables derivadas de la fecha."
+                })
         
-        # Registrar resultados
-        logger.info(f"Validación de fechas completada: {len(errores)} problemas encontrados")
+        logger.info(f"Validación avanzada de fechas para ML completada: {len(errores)} advertencias/errores.")
         return errores
         
     except Exception as e:
         logger.error(f"Error al validar fechas: {str(e)}")
         errores.append({
             'columna': 'general',
-            'mensaje': f"Error al validar formatos de fecha: {str(e)}",
-            'sugerencia': "Revisar el formato de las columnas de fecha"
+            'mensaje': f"Error al validar fechas: {str(e)}",
+            'sugerencia': "Revisar el formato y contenido de las columnas de fecha."
         })
         return errores
 
 
-def detectar_formatos_fecha(serie):
-    """
-    Detecta los diferentes formatos de fecha en una serie.
-    
-    Args:
-        serie (pd.Series): Serie con valores de fecha como strings
-        
-    Returns:
-        list: Lista de formatos detectados
-    """
-    formatos = set()
-    
-    # Patrones comunes
-    patrones = {
-        r'\d{4}-\d{2}-\d{2}': 'YYYY-MM-DD',
-        r'\d{2}/\d{2}/\d{4}': 'DD/MM/YYYY o MM/DD/YYYY',
-        r'\d{2}-\d{2}-\d{4}': 'DD-MM-YYYY o MM-DD-YYYY',
-        r'\d{4}/\d{2}/\d{2}': 'YYYY/MM/DD',
-        r'\d{2}\.\d{2}\.\d{4}': 'DD.MM.YYYY',
-        r'\d{1,2}\s+[a-zA-Z]{3}\s+\d{4}': 'DD MMM YYYY',
-        r'[a-zA-Z]{3}\s+\d{1,2},\s+\d{4}': 'MMM DD, YYYY'
-    }
-    
-    # Muestrear para no procesar toda la serie si es muy grande
-    muestra = serie.sample(min(100, len(serie)))
-    
-    for valor in muestra:
-        for patron, formato in patrones.items():
-            if re.match(patron, valor):
-                formatos.add(formato)
-                break
-    
-    return list(formatos)
-
-
-def validar_unidades(df):
-    """
-    Detecta posibles inconsistencias en unidades de medida.
-    
-    Args:
-        df (pd.DataFrame): DataFrame con los datos
-        
-    Returns:
-        list: Lista de diccionarios con errores detectados
-    """
-    errores = []
-    
-    try:
-        # Definir patrones y palabras clave para unidades comunes
-        unidades_temperatura = {  # noqa: F841
-            'celsius': ['°c', 'c', 'celsius', 'centígrados', 'centigrados'],
-            'fahrenheit': ['°f', 'f', 'fahrenheit'],
-            'kelvin': ['k', 'kelvin']
-        }
-        
-        unidades_peso = {  # noqa: F841
-            'kilogramos': ['kg', 'kgs', 'kilogramos', 'kilos'],
-            'gramos': ['g', 'gr', 'grs', 'gramos'],
-            'libras': ['lb', 'lbs', 'libras', 'pounds'],
-            'onzas': ['oz', 'onzas', 'ounces']
-        }
-        
-        unidades_longitud = {  # noqa: F841
-            'metros': ['m', 'mt', 'mts', 'metros'],
-            'centimetros': ['cm', 'cms', 'centímetros', 'centimetros'],
-            'pulgadas': ['in', 'inch', 'pulgadas'],
-            'pies': ['ft', 'feet', 'pie', 'pies']
-        }
-        
-        unidades_volumen = {  # noqa: F841
-            'litros': ['l', 'lt', 'lts', 'litros'],
-            'mililitros': ['ml', 'mls', 'mililitros'],
-            'galones': ['gal', 'galones', 'gallons'],
-            'onzas_liquidas': ['fl oz', 'fluid ounce', 'onzas líquidas']
-        }
-        
-        # Buscar columnas numéricas que podrían contener unidades
-        for columna in df.columns:
-            if pd.api.types.is_numeric_dtype(df[columna]):
-                # Buscar pistas en el nombre de la columna
-                nombre_lower = columna.lower()
-                
-                # Detectar posibles columnas de temperatura
-                if any(keyword in nombre_lower for keyword in ['temp', 'temperatura', 'temperature']):
-                    # Analizar el rango de valores para inferir unidades
-                    min_val, max_val = df[columna].min(), df[columna].max()
-                    
-                    if 0 <= min_val <= 50 and 10 <= max_val <= 50:
-                        # Probablemente Celsius
-                        unidad_inferida = 'celsius'
-                    elif 32 <= min_val <= 100 and 50 <= max_val <= 100:
-                        # Probablemente Fahrenheit
-                        unidad_inferida = 'fahrenheit'
-                    elif 273 <= min_val <= 373:
-                        # Probablemente Kelvin
-                        unidad_inferida = 'kelvin'
-                    else:
-                        # No se puede determinar
-                        continue
-                    
-                    # Verificar si hay valores atípicos que sugieran mezcla de unidades
-                    q1, q3 = df[columna].quantile(0.25), df[columna].quantile(0.75)
-                    iqr = q3 - q1
-                    limite_inf, limite_sup = q1 - 1.5 * iqr, q3 + 1.5 * iqr
-                    
-                    outliers = df[columna][(df[columna] < limite_inf) | (df[columna] > limite_sup)]
-                    if len(outliers) > 0 and len(outliers) / len(df) < 0.1:
-                        # Posible mezcla de unidades
-                        errores.append({
-                            'columna': columna,
-                            'mensaje': f"Posible mezcla de unidades de temperatura. Unidad principal inferida: {unidad_inferida}",
-                            'sugerencia': f"Estandarizar todas las mediciones a {unidad_inferida}",
-                            'unidades_detectadas': [unidad_inferida, 'desconocida'],
-                            'unidad_sugerida': unidad_inferida,
-                            'unidades_disponibles': ['celsius', 'fahrenheit', 'kelvin']
-                        })
-                
-                # Detectar posibles columnas de peso
-                elif any(keyword in nombre_lower for keyword in ['peso', 'weight', 'masa', 'mass']):
-                    # Análisis similar al de temperatura pero para pesos
-                    # ...
-                    pass
-                
-                # Detectar posibles columnas de longitud
-                elif any(keyword in nombre_lower for keyword in ['longitud', 'length', 'altura', 'height', 'ancho', 'width']):
-                    # Análisis similar para longitudes
-                    # ...
-                    pass
-                
-                # Detectar posibles columnas de volumen
-                elif any(keyword in nombre_lower for keyword in ['volumen', 'volume', 'capacidad', 'capacity']):
-                    # Análisis similar para volúmenes
-                    # ...
-                    pass
-        
-        # Registrar resultados
-        logger.info(f"Validación de unidades completada: {len(errores)} problemas encontrados")
-        return errores
-        
-    except Exception as e:
-        logger.error(f"Error al validar unidades: {str(e)}")
-        errores.append({
-            'columna': 'general',
-            'mensaje': f"Error al validar unidades de medida: {str(e)}",
-            'sugerencia': "Revisar el formato de las columnas con unidades de medida"
-        })
-        return errores
-
-
-def detectar_inconsistencias(df):
-    """
-    Detecta inconsistencias generales en el dataset.
-    
-    Args:
-        df (pd.DataFrame): DataFrame con los datos
-        
-    Returns:
-        list: Lista de diccionarios con errores detectados
-    """
-    # Combinar los resultados de todas las validaciones
-    errores = []
-    errores.extend(validar_tipos_datos(df))
-    errores.extend(validar_fechas(df))
-    errores.extend(validar_unidades(df))
-    
-    return errores
+# FIN DEL MÓDULO: Se eliminaron las funciones detectar_formatos_fecha, validar_unidades y detectar_inconsistencias por no ser necesarias en la arquitectura y flujo actual.

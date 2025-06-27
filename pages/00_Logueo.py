@@ -1,94 +1,52 @@
 import streamlit as st
 import sys
 import os
-import sqlite3
 
 # Agregar el directorio src al path para poder importar los módulos
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Importar módulos de la aplicación
 from src.audit.logger import log_audit
+from src.state.session_manager import SessionManager
 
-# Ruta a la base de datos
-db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analitica_farma.db')
+st.title("🔐 0. Inicio de Sesión y Acceso a Analítica Farma")
 
-st.title("Bienvenido a Analítica Farma")
+st.write("""
+Bienvenido a la plataforma de análisis industrial farmacéutico.
 
-st.markdown('<div style="text-align: justify;">Esta aplicación te permitirá realizar un análisis exhaustivo de datos farmacéuticos, desde la carga y validación de datos hasta la recomendación de modelos y generación de reportes.</div>', unsafe_allow_html=True)
+Esta aplicación te permitirá realizar un análisis exhaustivo de datos farmacéuticos, desde la carga y validación de datos hasta la recomendación de modelos y generación de reportes.
 
-st.markdown('<div style="text-align: justify;"></br>Por favor, ingresa tus credenciales para comenzar.</div>', unsafe_allow_html=True)
+**Flujo recomendado:**
+1. Cargar Datos
+2. Validar Datos
+3. Analizar Calidad
+4. Configurar Datos
+5. Entrenar y Evaluar Modelos
+6. Generar Reportes
+""")
 
-st.markdown('</br>', unsafe_allow_html=True)
+st.subheader("Opciones de acceso")
 
-# Formulario de logueo
-with st.form(key="login_form"):
-    correo = st.text_input("Correo electrónico", value="usuario@empresa.com")
-    st.form_submit_button("Iniciar sesión")
-
-# Procesar el formulario cuando se envía
-if st.session_state.get("login_form", False):
-    try:
-        # Verificar si el usuario existe en la base de datos
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT id_usuario, nombre, rol FROM usuarios WHERE correo = ?", (correo,))
-        usuario = cursor.fetchone()
-        
-        if usuario:
-            id_usuario, nombre_usuario, rol_usuario = usuario
-            
-            # Guardar información del usuario en la sesión
-            st.session_state.logged_in = True
-            st.session_state.usuario_id = id_usuario
-            st.session_state.usuario_nombre = nombre_usuario
-            st.session_state.usuario_rol = rol_usuario
-            st.session_state.usuario_correo = correo
-            
-            # Registrar el login en la auditoría
-            log_audit(id_usuario, "LOGIN", "Sistema", f"Login exitoso como {rol_usuario}")
-            
-            # Mensaje de éxito y redirección
-            st.success(f"¡Bienvenido, {nombre_usuario}!")
+with st.container():
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("🧪 Acceso rápido (demo)", use_container_width=True, help="Acceso de desarrollo/pruebas. Persiste usuario demo."):
+            SessionManager.set_user(
+                usuario_id=1,
+                usuario_nombre="usuario",
+                usuario_rol="analista",
+                usuario_email="usuario@empresa.com"
+            )
+            log_audit(1, "LOGIN", "Sistema", "Acceso rápido (demo)")
+            st.success("Acceso demo exitoso. Redirigiendo...")
             st.rerun()
-        else:
-            st.error("Usuario no encontrado. Utilizando usuario por defecto.")
-            
-            # Usar usuario por defecto
-            st.session_state.logged_in = True
-            st.session_state.usuario_id = 1
-            st.session_state.usuario_nombre = "usuario"
-            st.session_state.usuario_rol = "analista"
-            st.session_state.usuario_correo = "usuario@empresa.com"
-            
-            # Registrar el login en la auditoría
-            log_audit(1, "LOGIN", "Sistema", "Login con usuario por defecto")
-            
-            st.rerun()
-            
-        conn.close()
-        
-    except Exception as e:
-        st.error(f"Error al iniciar sesión: {str(e)}")
-        
-        # Usar usuario por defecto en caso de error
-        st.session_state.logged_in = True
-        st.session_state.usuario_id = 1
-        st.session_state.usuario_nombre = "usuario"
-        st.session_state.usuario_rol = "analista"
-        st.session_state.usuario_correo = "usuario@empresa.com"
-        
-        st.rerun()
+    with col2:
+        if st.button("🔑 Login con usuario/contraseña (Snowflake)", use_container_width=True, help="Validación contra tabla de usuarios en Snowflake."):
+            st.info("[Futuro] Aquí se implementará el login contra Snowflake.\n\nDeberás pedir usuario y contraseña, validar contra la tabla de usuarios en Snowflake y luego usar SessionManager.set_user().")
+    with col3:
+        if st.button("🔒 Login SSO corporativo (Snowflake)", use_container_width=True, help="SSO corporativo vía Snowflake/AD."):
+            st.info("[Futuro] Aquí se integrará el login SSO corporativo.\n\nSe usará el proveedor de identidad de la empresa y luego se obtendrán los datos del usuario para SessionManager.set_user().")
 
-# Botón simple para logueo rápido (desarrollo)
-if st.button("Acceso rápido (demo)"):
-    st.session_state.logged_in = True
-    st.session_state.usuario_id = 1
-    st.session_state.usuario_nombre = "usuario"
-    st.session_state.usuario_rol = "analista"
-    st.session_state.usuario_correo = "usuario@empresa.com"
-    
-    # Registrar el login en la auditoría
-    log_audit(1, "LOGIN", "Sistema", "Acceso rápido (demo)")
-    
-    st.rerun()
+# Redirección automática si ya está logueado
+if SessionManager.is_logged_in():
+    st.switch_page("pages/Datos/01_Cargar_Datos.py")

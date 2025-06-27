@@ -17,13 +17,12 @@ from audit.logger import setup_logger
 logger = setup_logger("cargador")
 
 
-def cargar_datos_desde_csv(archivo, validar=True, **kwargs):
+def cargar_datos_desde_csv(archivo, **kwargs):
     """
-    Carga datos desde un archivo CSV y realiza validaciones básicas.
+    Carga datos desde un archivo CSV y devuelve el DataFrame junto con metadatos básicos.
     
     Args:
         archivo: Objeto de archivo o ruta al archivo CSV
-        validar (bool): Indica si se debe validar el archivo antes de cargarlo
         **kwargs: Argumentos adicionales para pd.read_csv
     
     Returns:
@@ -45,35 +44,7 @@ def cargar_datos_desde_csv(archivo, validar=True, **kwargs):
             logger.warning(f"El archivo {nombre_archivo} está vacío o no contiene datos válidos")
             return df, {"error": "El archivo está vacío", "nombre_archivo": nombre_archivo, "origen": "csv"}
         
-        # Realizar validaciones básicas si se solicita
-        warnings = []
-        if validar:
-            # Verificar si hay filas vacías
-            filas_vacias = df.isna().all(axis=1).sum()
-            if filas_vacias > 0:
-                warning_msg = f"El archivo contiene {filas_vacias} filas completamente vacías"
-                warnings.append(warning_msg)
-                logger.warning(warning_msg)
-            
-            # Verificar columnas con valores faltantes
-            columnas_con_nulos = {col: df[col].isna().sum() for col in df.columns if df[col].isna().any()}
-            if columnas_con_nulos:
-                warning_msg = f"Columnas con valores faltantes: {columnas_con_nulos}"
-                warnings.append(warning_msg)
-                logger.warning(warning_msg)
-            
-            # Verificar duplicados
-            duplicados = df.duplicated().sum()
-            if duplicados > 0:
-                warning_msg = f"Se detectaron {duplicados} filas duplicadas"
-                warnings.append(warning_msg)
-                logger.warning(warning_msg)
-            
-            # Verificar tipos de datos inconsistentes
-            tipos_inferidos = {col: str(df[col].dtype) for col in df.columns}
-            logger.info(f"Tipos de datos inferidos: {tipos_inferidos}")
-        
-        # Crear metadatos detallados
+        # Metadatos básicos
         metadatos = {
             'nombre_archivo': nombre_archivo,
             'fecha_carga': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -81,8 +52,6 @@ def cargar_datos_desde_csv(archivo, validar=True, **kwargs):
             'columnas': df.shape[1],
             'columnas_nombres': list(df.columns),
             'tipos_datos': {col: str(df[col].dtype) for col in df.columns},
-            'valores_faltantes': df.isna().sum().sum(),
-            'warnings': warnings if validar else [],
             'origen': 'csv'
         }
         
@@ -94,6 +63,49 @@ def cargar_datos_desde_csv(archivo, validar=True, **kwargs):
         error_msg = f"Error al cargar el archivo CSV: {str(e)}"
         logger.error(error_msg)
         raise Exception(error_msg)
+
+def validar_dataframe_csv(df):
+    """
+    Realiza validaciones básicas sobre un DataFrame cargado desde CSV.
+    Args:
+        df (pd.DataFrame): DataFrame a validar
+    Returns:
+        list: Lista de advertencias encontradas
+        dict: Metadatos de validación
+    """
+    warnings = []
+    if df.empty:
+        warnings.append("El DataFrame está vacío.")
+        return warnings, {}
+    # Verificar filas completamente vacías
+    filas_vacias = df.isna().all(axis=1).sum()
+    if filas_vacias > 0:
+        warning_msg = f"El archivo contiene {filas_vacias} filas completamente vacías"
+        warnings.append(warning_msg)
+        logger.warning(warning_msg)
+    # Verificar columnas con valores faltantes
+    columnas_con_nulos = {col: df[col].isna().sum() for col in df.columns if df[col].isna().any()}
+    if columnas_con_nulos:
+        warning_msg = f"Columnas con valores faltantes: {columnas_con_nulos}"
+        warnings.append(warning_msg)
+        logger.warning(warning_msg)
+    # Verificar duplicados
+    duplicados = df.duplicated().sum()
+    if duplicados > 0:
+        warning_msg = f"Se detectaron {duplicados} filas duplicadas"
+        warnings.append(warning_msg)
+        logger.warning(warning_msg)
+    # Tipos de datos
+    tipos_inferidos = {col: str(df[col].dtype) for col in df.columns}
+    logger.info(f"Tipos de datos inferidos: {tipos_inferidos}")
+    metadatos_validacion = {
+        'filas_vacias': filas_vacias,
+        'columnas_con_nulos': columnas_con_nulos,
+        'duplicados': duplicados,
+        'tipos_datos': tipos_inferidos
+    }
+    return warnings, metadatos_validacion
+
 
 def guardar_en_bd_local(df, nombre_tabla, metadatos=None, db_path=None, id_usuario=1):
     """
