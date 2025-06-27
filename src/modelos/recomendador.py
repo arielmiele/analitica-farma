@@ -1,12 +1,13 @@
 """
 Módulo para la recomendación del mejor modelo de machine learning.
+Incluye funciones para generar recomendaciones específicas basadas en diagnósticos.
 """
 import json
 import os
 import sqlite3
 import logging
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 # Configuración del logger
 logger = logging.getLogger("recomendador")
@@ -216,3 +217,143 @@ def guardar_modelo_seleccionado(
     finally:
         if conn:
             conn.close()
+
+def generar_recomendaciones_diagnostico(tipo_diag: str) -> List[str]:
+    """
+    Genera recomendaciones genéricas basadas en el tipo de diagnóstico.
+    
+    Args:
+        tipo_diag: Tipo de diagnóstico ('overfitting', 'underfitting', 'balanceado')
+        
+    Returns:
+        List[str]: Lista de recomendaciones
+    """
+    if tipo_diag == 'overfitting':
+        return [
+            "🔄 Considere usar regularización (L1/L2)",
+            "📊 Aumente el tamaño del dataset de entrenamiento", 
+            "🌳 Reduzca la complejidad del modelo",
+            "✂️ Aplique técnicas de feature selection",
+            "📈 Implemente early stopping durante el entrenamiento",
+            "🔀 Use técnicas de data augmentation si es apropiado",
+            "👥 Considere ensemble methods para reducir varianza"
+        ]
+    elif tipo_diag == 'underfitting':
+        return [
+            "🔧 Aumente la complejidad del modelo",
+            "🎯 Agregue más características relevantes",
+            "⚙️ Ajuste los hiperparámetros", 
+            "🔍 Verifique la calidad de los datos",
+            "📊 Considere feature engineering más sofisticado",
+            "🧮 Pruebe modelos más complejos (ensemble, neural networks)",
+            "📈 Aumente el número de iteraciones de entrenamiento"
+        ]
+    else:
+        return [
+            "✅ El modelo muestra un comportamiento balanceado",
+            "🔍 Considere realizar ajuste fino de hiperparámetros",
+            "📈 Monitoree el rendimiento en producción",
+            "🎯 Evalúe la adición de características adicionales",
+            "🔧 Implemente validación A/B en producción",
+            "📊 Configure alertas para model drift",
+            "🎓 Prepare documentación para transferencia a producción"
+        ]
+
+def generar_recomendaciones_industria(tipo_problema: str) -> Dict[str, List[str]]:
+    """
+    Genera recomendaciones específicas para la industria farmacéutica.
+    
+    Args:
+        tipo_problema: Tipo de problema/diagnóstico
+        
+    Returns:
+        Dict: Recomendaciones categorizadas para la industria
+    """
+    return {
+        "overfitting": [
+            "📋 Documentación: Registre todas las correcciones en el batch record",
+            "🔄 Validación cruzada: Implemente validación con datos de múltiples lotes",
+            "📊 Monitoreo continuo: Establezca alertas para drift del modelo en producción",
+            "👥 Revisión por pares: Involucre a QA en la validación del modelo",
+            "🔬 Compliance: Asegúrese de cumplir con regulaciones FDA/EMA",
+            "📈 Trazabilidad: Mantenga histórico completo de cambios de modelo"
+        ],
+        "underfitting": [
+            "🔬 Revisión de variables: Incluya más CPPs (Critical Process Parameters)",
+            "📈 Aumento de datos: Considere datos históricos de sitios similares",
+            "🧪 Experimentos dirigidos: Planifique experimentos para llenar gaps de datos",
+            "🎯 Refinamiento de objetivos: Revise si los KPIs están bien definidos",
+            "📊 Análisis de riesgo: Evalúe impacto de predicciones incorrectas",
+            "🔧 Calibración: Implemente procedimientos de calibración de equipos"
+        ],
+        "balanceado": [
+            "✅ Validación final: Proceda con validación en lotes piloto",
+            "📝 Documentación GMP: Prepare documentación para transferencia",
+            "🔍 Monitoreo de performance: Implemente sistema de seguimiento continuo",
+            "🎓 Entrenamiento: Capacite al personal en el uso del modelo",
+            "📋 SOPs: Desarrolle procedimientos estándar de operación",
+            "🔄 Mantenimiento: Establezca rutinas de mantenimiento del modelo"
+        ],
+        "general": [
+            "🏭 Validación de proceso: Asegure que el modelo respalde controles de proceso",
+            "📊 Reportes regulatorios: Configure generación automática de reportes",
+            "🔒 Seguridad de datos: Implemente controles de acceso robustos",
+            "🎯 ROI: Monitoree retorno de inversión del modelo implementado"
+        ]
+    }
+
+def generar_recomendaciones_completas(diagnostico: Dict, modelo: Dict, tipo_problema: str) -> Dict:
+    """
+    Genera un conjunto completo de recomendaciones basadas en el diagnóstico del modelo.
+    
+    Args:
+        diagnostico: Diccionario con información del diagnóstico
+        modelo: Información del modelo
+        tipo_problema: Tipo de problema ('clasificacion', 'regresion')
+        
+    Returns:
+        Dict: Recomendaciones completas organizadas por categoría
+    """
+    try:
+        # Determinar tipo de diagnóstico
+        overfitting = diagnostico.get('overfitting', 'desconocido')
+        underfitting = diagnostico.get('underfitting', 'desconocido')
+        
+        if overfitting == 'posible':
+            tipo_diag = 'overfitting'
+        elif underfitting == 'posible':
+            tipo_diag = 'underfitting'
+        else:
+            tipo_diag = 'balanceado'
+        
+        # Obtener recomendaciones del análisis si están disponibles
+        recomendaciones_del_analisis = modelo.get('recomendaciones', [])
+        recomendaciones_diagnostico = diagnostico.get('recomendaciones', [])
+        
+        # Generar recomendaciones específicas
+        recomendaciones_genericas = generar_recomendaciones_diagnostico(tipo_diag)
+        recomendaciones_industria = generar_recomendaciones_industria(tipo_diag)
+        
+        return {
+            "tipo_diagnostico": tipo_diag,
+            "recomendaciones_especificas": recomendaciones_del_analisis + recomendaciones_diagnostico,
+            "recomendaciones_genericas": recomendaciones_genericas,
+            "recomendaciones_industria": recomendaciones_industria,
+            "contexto": {
+                "nombre_modelo": modelo.get('nombre', 'Modelo'),
+                "tipo_problema": tipo_problema,
+                "overfitting": overfitting,
+                "underfitting": underfitting
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generando recomendaciones: {str(e)}")
+        return {
+            "error": f"Error al generar recomendaciones: {str(e)}",
+            "tipo_diagnostico": "error",
+            "recomendaciones_especificas": [],
+            "recomendaciones_genericas": [],
+            "recomendaciones_industria": {},
+            "contexto": {}
+        }

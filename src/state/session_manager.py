@@ -15,18 +15,6 @@ class SessionManager:
         if "logged_in" not in st.session_state:
             st.session_state.logged_in = False
             
-        if "etapas_completadas" not in st.session_state:
-            st.session_state.etapas_completadas = {
-                "carga_datos": False,
-                "configuracion": False,
-                "validacion": False,
-                "analisis_calidad": False,
-                "transformacion": False,
-                "entrenamiento": False,
-                "evaluacion": False,
-                "recomendacion": False
-            }
-            
         # Variables para el manejo del dataset
         if 'df' not in st.session_state:
             st.session_state.df = None
@@ -58,8 +46,11 @@ class SessionManager:
             "origen": None,
             "variable_objetivo": st.session_state.get('variable_objetivo', None),
             "tipo_problema": st.session_state.get('tipo_problema', ''),
-            "num_predictores": len(st.session_state.get('predictores', [])) if 'predictores' in st.session_state else 0
+            # Usar la clave unificada 'variables_predictoras' y mantener compatibilidad con 'predictores'
+            "num_predictores": len(st.session_state.get('variables_predictoras', st.session_state.get('predictores', [])))
         }
+        # Añadir la lista de predictores para el sidebar (máxima compatibilidad)
+        info["lista_predictores"] = st.session_state.get('variables_predictoras', st.session_state.get('predictores', []))
         
         # Procesar origen
         origen = st.session_state.get('metodo_carga', 'Nuevo archivo')
@@ -83,43 +74,28 @@ class SessionManager:
     @staticmethod
     def get_progress_status() -> Dict[str, bool]:
         """
-        Obtiene el estado actual de las etapas del workflow
-        
-        Returns:
-            Dict[str, bool]: Diccionario con el estado de cada etapa
+        (Eliminado: ya no se usa el seguimiento de progreso por etapas)
         """
-        return st.session_state.etapas_completadas.copy()
-    
+        return {}
+
     @staticmethod
     def update_progress(etapa_id: str, completada: bool = True) -> None:
         """
-        Actualiza el estado de una etapa del workflow
-        
-        Args:
-            etapa_id (str): Identificador de la etapa
-            completada (bool): Estado de la etapa (True = completada, False = pendiente)
+        (Eliminado: ya no se usa el seguimiento de progreso por etapas)
         """
-        if etapa_id in st.session_state.etapas_completadas:
-            st.session_state.etapas_completadas[etapa_id] = completada
-    
+        pass
+
     @staticmethod
     def reset_analysis() -> None:
         """
-        Reinicia todas las variables relacionadas con el análisis
-        pero mantiene el estado de login
+        (Eliminado: ya no se usa el reinicio de análisis por etapas)
         """
-        # Reiniciar todas las etapas
-        for etapa in st.session_state.etapas_completadas:
-            st.session_state.etapas_completadas[etapa] = False
-            
-        # Reiniciar variables del dataset
+        # Reiniciar solo variables esenciales, sin etapas
         st.session_state.df = None
         st.session_state.filename = None
         st.session_state.upload_timestamp = None
         st.session_state.paso_carga = 0
         st.session_state.metodo_carga = None
-        
-        # Eliminar variables de configuración
         if 'variable_objetivo' in st.session_state:
             del st.session_state.variable_objetivo
         if 'predictores' in st.session_state:
@@ -260,3 +236,35 @@ class SessionManager:
         except Exception:
             # Si hay un error al redirigir, simplemente continuamos
             pass
+    
+    @staticmethod
+    def set_user(usuario_id: int, usuario_nombre: str, usuario_rol: str, usuario_email: str):
+        """
+        Guarda los datos mínimos del usuario en la sesión.
+        """
+        st.session_state.logged_in = True
+        st.session_state.usuario_id = usuario_id
+        st.session_state.usuario_nombre = usuario_nombre
+        st.session_state.usuario_rol = usuario_rol
+        st.session_state.usuario_email = usuario_email
+
+    @staticmethod
+    def get_user_info() -> dict:
+        """
+        Devuelve los datos persistentes del usuario en sesión.
+        """
+        return {
+            "usuario_id": st.session_state.get("usuario_id", None),
+            "usuario_nombre": st.session_state.get("usuario_nombre", None),
+            "usuario_rol": st.session_state.get("usuario_rol", None),
+            "usuario_email": st.session_state.get("usuario_email", None),
+        }
+
+    @staticmethod
+    def clear_user():
+        """
+        Limpia solo los datos de usuario de la sesión.
+        """
+        for key in ["usuario_id", "usuario_nombre", "usuario_rol", "usuario_email", "logged_in"]:
+            if key in st.session_state:
+                del st.session_state[key]

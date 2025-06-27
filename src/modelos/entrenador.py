@@ -639,3 +639,38 @@ def preparar_datos_para_ml(X: pd.DataFrame) -> pd.DataFrame:
     X_preprocesado = X_preprocesado.fillna(0)
     
     return X_preprocesado
+
+def cargar_modelo_entrenado(modelo_id: Optional[str] = None, listar: bool = False, id_usuario: Optional[int] = None, db_path: Optional[str] = None):
+    """
+    Lista modelos entrenados disponibles o carga un modelo específico por nombre.
+    Args:
+        modelo_id (str): Nombre del modelo a cargar (opcional)
+        listar (bool): Si True, retorna un diccionario de modelos disponibles
+        id_usuario (int): Filtra por usuario (opcional)
+        db_path (str): Ruta a la base de datos (opcional)
+    Returns:
+        Si listar: dict {nombre: {'nombre': str, ...}}
+        Si modelo_id: modelo deserializado
+    """
+    try:
+        # Obtener el último benchmarking (puede mejorarse para listar todos)
+        resultados = obtener_ultimo_benchmarking(id_usuario=id_usuario, db_path=db_path)
+        if not resultados:
+            logger.warning("No se encontraron resultados de benchmarking.")
+            return {} if listar else None
+        resultados = deserializar_modelos_benchmarking(resultados)
+        modelos = resultados.get('modelos_exitosos', [])
+        modelos_dict = {m['nombre']: {'nombre': m['nombre'], 'score': m.get('score', None)} for m in modelos if 'nombre' in m}
+        if listar:
+            return modelos_dict
+        if modelo_id is not None:
+            modelo = next((m for m in modelos if m.get('nombre') == modelo_id), None)
+            if modelo and 'modelo_objeto' in modelo:
+                return modelo['modelo_objeto']
+            else:
+                logger.error(f"No se encontró el modelo con nombre {modelo_id}.")
+                return None
+        return None
+    except Exception as e:
+        logger.error(f"Error en cargar_modelo_entrenado: {str(e)}")
+        return {} if listar else None

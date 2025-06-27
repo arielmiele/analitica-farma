@@ -313,3 +313,39 @@ def convertir_unidades(df, columna, unidad_destino, unidad_origen=None):
         raise
         
     return df_result
+
+def extraer_variables_fecha(df, columna, variables=None):
+    """
+    Extrae variables derivadas de una columna de fecha: año, mes, día, día_semana, día_año, semana, etc.
+    Args:
+        df (pd.DataFrame): DataFrame de entrada
+        columna (str): Nombre de la columna de fecha
+        variables (list, opcional): Lista de variables a extraer. Si None, extrae todas.
+    Returns:
+        pd.DataFrame: DataFrame con nuevas columnas agregadas
+    """
+    if columna not in df.columns:
+        raise ValueError(f"La columna {columna} no existe en el DataFrame")
+    df_result = df.copy()
+    # Convertir a datetime si es necesario
+    fechas = pd.to_datetime(df_result[columna], errors='coerce')
+    # Variables posibles
+    todas = {
+        'anio': fechas.dt.year,
+        'mes': fechas.dt.month,
+        'dia': fechas.dt.day,
+        'dia_semana': fechas.dt.weekday,  # 0=lunes
+        'nombre_dia': fechas.dt.day_name(),
+        'nombre_mes': fechas.dt.month_name(),
+        'dia_anio': fechas.dt.dayofyear,
+        'semana': fechas.dt.isocalendar().week,
+        'es_fin_de_semana': fechas.dt.weekday >= 5,
+        'fecha_epoch': fechas.astype('int64') // 10**9
+    }
+    if variables is None:
+        variables = list(todas.keys())
+    for var in variables:
+        if var in todas:
+            df_result[f"{columna}_{var}"] = todas[var]
+    log_operation(logger, "EXTRACCION_FECHA", f"Extraídas variables {variables} de la columna {columna}")
+    return df_result
