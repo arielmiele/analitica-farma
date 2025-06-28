@@ -72,25 +72,10 @@ class SessionManager:
         return info
     
     @staticmethod
-    def get_progress_status() -> Dict[str, bool]:
-        """
-        (Eliminado: ya no se usa el seguimiento de progreso por etapas)
-        """
-        return {}
-
-    @staticmethod
-    def update_progress(etapa_id: str, completada: bool = True) -> None:
-        """
-        (Eliminado: ya no se usa el seguimiento de progreso por etapas)
-        """
-        pass
-
-    @staticmethod
     def reset_analysis() -> None:
         """
-        (Eliminado: ya no se usa el reinicio de análisis por etapas)
+        Reinicia solo variables esenciales del análisis (dataset, configuración y selección de variables).
         """
-        # Reiniciar solo variables esenciales, sin etapas
         st.session_state.df = None
         st.session_state.filename = None
         st.session_state.upload_timestamp = None

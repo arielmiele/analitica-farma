@@ -19,10 +19,7 @@ def mostrar_recomendaciones_mejora(diagnostico, modelo, tipo_problema):
         st.error(f"❌ {recomendaciones_completas['error']}")
         return
     
-    # Obtener información del diagnóstico
     tipo_diag = recomendaciones_completas.get('tipo_diagnostico', 'balanceado')
-    
-    # Mostrar título según el tipo de diagnóstico
     if tipo_diag == 'overfitting':
         st.markdown("### 🔥 Estrategias para Reducir Overfitting")
     elif tipo_diag == 'underfitting':
@@ -30,24 +27,24 @@ def mostrar_recomendaciones_mejora(diagnostico, modelo, tipo_problema):
     else:
         st.markdown("### ✨ Estrategias para Optimización Adicional")
     
-    # Mostrar recomendaciones específicas del análisis
+    # Mostrar recomendaciones específicas (todas juntas)
     recomendaciones_especificas = recomendaciones_completas.get('recomendaciones_especificas', [])
     if recomendaciones_especificas:
         st.markdown("#### Recomendaciones específicas del análisis:")
-        for i, recomendacion in enumerate(recomendaciones_especificas, 1):
-            with st.expander(f"💡 Recomendación específica {i}", expanded=i <= 3):
-                st.markdown(recomendacion)
+        for rec in recomendaciones_especificas:
+            st.markdown(f"- {rec}")
     
-    # Mostrar recomendaciones genéricas
+    # Mostrar recomendaciones genéricas (todas juntas)
     recomendaciones_genericas = recomendaciones_completas.get('recomendaciones_genericas', [])
     if recomendaciones_genericas:
         st.markdown("#### Recomendaciones generales:")
-        for i, rec in enumerate(recomendaciones_genericas, 1):
-            with st.expander(f"🎯 Recomendación general {i}", expanded=False):
-                st.markdown(rec)
+        for rec in recomendaciones_genericas:
+            st.markdown(f"- {rec}")
     
-    # Mostrar recomendaciones para la industria farmacéutica
-    mostrar_recomendaciones_industria_ui(recomendaciones_completas)
+    # Mostrar solo si hay recomendaciones para la industria
+    recomendaciones_industria = recomendaciones_completas.get('recomendaciones_industria', {})
+    if recomendaciones_industria and any(recomendaciones_industria.values()):
+        mostrar_recomendaciones_industria_ui(recomendaciones_completas)
 
 
 def mostrar_recomendaciones_industria_ui(recomendaciones_completas):

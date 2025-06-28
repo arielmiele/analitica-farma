@@ -550,17 +550,18 @@ def obtener_benchmarking_por_id(
 
 def preparar_datos_para_ml(X: pd.DataFrame) -> pd.DataFrame:
     """
-    Preprocesa el DataFrame para hacerlo compatible con los algoritmos de ML,
+    Preprocesa el DataFrame para hacerlo compatible con los algoritmos de ML y SHAP,
     detectando y transformando columnas de fecha, texto y categóricas.
+    Asegura que el resultado final sea completamente numérico.
     
     Args:
         X (pd.DataFrame): DataFrame con variables predictoras
         
     Returns:
-        pd.DataFrame: DataFrame preprocesado listo para ML
+        pd.DataFrame: DataFrame preprocesado listo para ML y SHAP
     """
     X_preprocesado = X.copy()
-    
+
     # Identificar columnas de fecha y convertirlas a características numéricas
     for columna in X_preprocesado.columns:
         # Detectar columnas de tipo datetime
@@ -606,8 +607,8 @@ def preparar_datos_para_ml(X: pd.DataFrame) -> pd.DataFrame:
             except Exception as e:
                 logger.warning(f"No se pudo convertir la columna {columna} a fecha: {str(e)}")
     
-    # Convertir columnas categóricas (object) a numéricas usando one-hot encoding
-    columnas_objeto = X_preprocesado.select_dtypes(include=['object']).columns
+    # Convertir columnas categóricas (object/category) a numéricas usando one-hot encoding
+    columnas_objeto = X_preprocesado.select_dtypes(include=['object', 'category']).columns
     
     for columna in columnas_objeto:
         logger.info(f"Aplicando one-hot encoding a columna categórica: {columna}")
@@ -632,12 +633,16 @@ def preparar_datos_para_ml(X: pd.DataFrame) -> pd.DataFrame:
         # Eliminar columna original
         X_preprocesado = X_preprocesado.drop(columns=[columna])
     
+    # Eliminar columnas que no sean numéricas (por seguridad)
+    columnas_no_numericas = X_preprocesado.select_dtypes(exclude=[np.number]).columns
+    if len(columnas_no_numericas) > 0:
+        logger.warning(f"Eliminando columnas no numéricas no convertidas: {list(columnas_no_numericas)}")
+        X_preprocesado = X_preprocesado.drop(columns=columnas_no_numericas)
+
     # Manejar valores faltantes (NaN)
-    X_preprocesado = X_preprocesado.fillna(X_preprocesado.mean())
-    
-    # Si aún quedan NaN después del fillna (por ejemplo, en columnas donde todos son NaN)
+    X_preprocesado = X_preprocesado.fillna(X_preprocesado.mean(numeric_only=True))
     X_preprocesado = X_preprocesado.fillna(0)
-    
+
     return X_preprocesado
 
 def cargar_modelo_entrenado(modelo_id: Optional[str] = None, listar: bool = False, id_usuario: Optional[int] = None, db_path: Optional[str] = None):

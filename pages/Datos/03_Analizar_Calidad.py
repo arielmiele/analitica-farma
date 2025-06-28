@@ -58,10 +58,18 @@ else:
     nulos = df.isnull().sum()
     nulos_pct = (nulos / len(df) * 100).round(2)
     nulos_df = pd.DataFrame({"Nulos": nulos, "%": nulos_pct})
-    st.dataframe(nulos_df[nulos_df["Nulos"] > 0], use_container_width=True)
-    st.caption("Columnas con alto porcentaje de nulos pueden requerir imputación, eliminación o revisión de la fuente de datos.")
-    st.write(f"**Filas duplicadas:** {df.duplicated().sum()}")
-    st.caption("Duplicados pueden indicar errores de carga, registros repetidos o procesos de integración incompletos.")
+    cols_con_nulos = nulos_df[nulos_df["Nulos"] > 0]
+    if not cols_con_nulos.empty:
+        st.dataframe(cols_con_nulos, use_container_width=True)
+        st.caption("Columnas con alto porcentaje de nulos pueden requerir imputación, eliminación o revisión de la fuente de datos.")
+    else:
+        st.success("No se detectaron valores nulos en ninguna columna.")
+    num_dupes = df.duplicated().sum()
+    if num_dupes > 0:
+        st.write(f"**Filas duplicadas:** {num_dupes}")
+        st.caption("Duplicados pueden indicar errores de carga, registros repetidos o procesos de integración incompletos.")
+    else:
+        st.success("No se detectaron filas duplicadas en el dataset.")
 
     # === SECCIÓN 4: Distribución de variables ===
     st.header("4. Distribución de variables")
@@ -81,69 +89,140 @@ else:
         st.info("No hay variables numéricas.")
     if len(cat_cols) > 0:
         col_cat = st.selectbox("Selecciona una variable categórica", cat_cols)
-        fig = px.bar(df[col_cat].value_counts().reset_index(), x='index', y=col_cat, title=f"Frecuencia de {col_cat}")
+        vc = df[col_cat].value_counts().reset_index()
+        vc.columns = [col_cat, 'count']
+        fig = px.bar(vc, x=col_cat, y='count', title=f"Frecuencia de {col_cat}")
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Categorías dominantes pueden indicar desbalance o necesidad de agrupar valores poco frecuentes.")
         # Gráfico de pastel
         fig2 = px.pie(df, names=col_cat, title=f"Distribución de {col_cat}")
         st.plotly_chart(fig2, use_container_width=True)
 
-    # === SECCIÓN 5: Correlación y relaciones ===
-    if len(num_cols) > 1:
-        st.header("5. Correlación entre variables numéricas")
-        st.markdown("""
-        **Objetivo:** Identificar relaciones lineales entre variables numéricas. Correlaciones altas pueden indicar redundancia o multicolinealidad.
-        """)
-        corr = df[num_cols].corr()
-        fig = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Matriz de correlación")
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption("Correlaciones cercanas a 1 o -1 sugieren relación fuerte; valores cercanos a 0 indican independencia.")
-        # Scatter matrix
-        st.markdown("**Matriz de dispersión (scatter matrix):**")
-        fig2 = px.scatter_matrix(df, dimensions=num_cols, title="Matriz de dispersión de variables numéricas")
-        st.plotly_chart(fig2, use_container_width=True)
-
-    # === SECCIÓN 6: Outliers ===
-    st.header("6. Detección de outliers (boxplot)")
+    # === SECCIÓN 5: Comparativa con la variable objetivo ===
+    st.header("5. Comparativa con la variable objetivo")
     st.markdown("""
-    **Objetivo:** Visualizar valores atípicos que pueden distorsionar el análisis y los modelos. Los outliers pueden ser errores, casos especiales o información relevante.
+    Visualiza cómo se relacionan las variables explicativas seleccionadas con la variable objetivo. Esta sección ayuda a identificar relaciones predictivas y patrones útiles para el modelado.
     """)
-    if len(num_cols) > 0:
-        col_out = st.selectbox("Selecciona una variable numérica para boxplot", num_cols, key="boxplot")
-        fig = px.box(df, y=col_out, points="outliers", title=f"Boxplot de {col_out}")
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption("Puntos fuera de los bigotes del boxplot son posibles outliers. Revisar si son errores o casos válidos.")
-        # Swarm plot (imitado con strip)
-        st.markdown("**Distribución detallada (strip plot):**")
-        fig2 = px.strip(df, y=col_out, title=f"Distribución detallada de {col_out}")
-        st.plotly_chart(fig2, use_container_width=True)
+    # Selección y persistencia de variable objetivo
+    all_cols = list(df.columns)
+    if 'target_col' not in st.session_state or st.session_state.target_col not in all_cols:
+        st.session_state.target_col = all_cols[0]
+    target_col = st.selectbox(
+        "Selecciona la variable objetivo (target)",
+        all_cols,
+        index=all_cols.index(st.session_state.target_col),
+        key="target_selector"
+    )
+    st.session_state.target_col = target_col
+    st.info(f"Variable objetivo seleccionada: **{target_col}** (persistente en la sesión y visible en el sidebar)")
 
-    # === SECCIÓN 7: Recomendaciones ===
-    st.header("7. Recomendaciones y hallazgos clave")
-    st.markdown("""
-    **Objetivo:** Resumir los principales problemas detectados y sugerir próximos pasos para mejorar la calidad y utilidad del dataset.
-    """)
-    recomendaciones = []
-    if nulos.sum() > 0:
-        recomendaciones.append("Hay columnas con valores nulos. Considera imputar o eliminar filas/columnas según el caso.")
-    if df.duplicated().sum() > 0:
-        recomendaciones.append("Existen filas duplicadas. Se recomienda revisar y limpiar duplicados.")
-    if len(num_cols) > 0:
-        for col in num_cols:
-            skew = df[col].skew()
-            if abs(skew) > 1:
-                recomendaciones.append(f"La variable '{col}' presenta alta asimetría (skewness={skew:.2f}). Considera transformaciones.")
-    if len(recomendaciones) == 0:
-        st.success("No se detectaron problemas importantes en el análisis exploratorio.")
+    with st.container():
+        st.markdown("**Selecciona variables explicativas para el análisis comparativo:**")
+        col_num, col_cat = st.columns(2)
+        with col_num:
+            st.caption(f"Variables numéricas disponibles: {len([c for c in all_cols if c in num_cols and c != target_col])}")
+            if 'explicativas_num' in st.session_state:
+                explicativas_num_default = []#c for c in st.session_state.explicativas_num if c in num_cols and c != target_col]
+            else:
+                explicativas_num_default = []#c for c in num_cols if c != target_col]
+            explicativas_num = st.multiselect(
+                "Variables numéricas",
+                [c for c in num_cols if c != target_col],
+                default=explicativas_num_default,
+                key="explicativas_num_selector"
+            )
+            st.session_state.explicativas_num = explicativas_num
+        with col_cat:
+            st.caption(f"Variables categóricas disponibles: {len([c for c in all_cols if c in cat_cols and c != target_col])}")
+            if 'explicativas_cat' in st.session_state:
+                explicativas_cat_default = []#c for c in st.session_state.explicativas_cat if c in cat_cols and c != target_col]
+            else:
+                explicativas_cat_default = []#c for c in cat_cols if c != target_col]
+            explicativas_cat = st.multiselect(
+                "Variables categóricas",
+                [c for c in cat_cols if c != target_col],
+                default=explicativas_cat_default,
+                key="explicativas_cat_selector"
+            )
+            st.session_state.explicativas_cat = explicativas_cat
+    # Unir ambas selecciones para el análisis
+    explicativas_cols = st.session_state.explicativas_num + st.session_state.explicativas_cat
+    st.session_state.explicativas_cols = explicativas_cols
+
+    mostrar_graficos = False
+    if len(explicativas_cols) == 0:
+        st.warning("Selecciona al menos una variable explicativa para visualizar los gráficos comparativos.")
     else:
-        for rec in recomendaciones:
-            st.warning(rec)
+        if len(explicativas_cols) > 15:
+            st.warning("Has seleccionado más de 15 variables explicativas. El procesamiento y la visualización pueden tardar y consumir muchos recursos. Considera reducir la selección para un análisis más ágil.")
+        if st.button("Mostrar análisis comparativo y avanzado", use_container_width=True):
+            mostrar_graficos = True
 
-    st.write("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⬅️ Volver a Validar Datos"):
+    if mostrar_graficos:
+        target_is_cat = (df[target_col].dtype == 'object' or str(df[target_col].dtype).startswith('category') or df[target_col].nunique() < 10)
+        if target_is_cat:
+            st.markdown("### Boxplot de variables numéricas por clase de la variable objetivo")
+            st.info("Estos gráficos muestran la distribución de cada variable numérica para cada clase de la variable objetivo. Observa si hay diferencias claras entre grupos, presencia de outliers o solapamiento entre clases. Diferencias marcadas pueden indicar buen poder predictivo.")
+            for col in explicativas_cols:
+                if col in num_cols:
+                    fig = px.box(df, x=target_col, y=col, points="outliers", title=f"Boxplot de {col} según {target_col}")
+                    st.plotly_chart(fig, use_container_width=True)
+            st.markdown("### Distribución de variables categóricas vs objetivo")
+            st.info("Estos gráficos muestran la frecuencia de cada categoría según la clase objetivo. Busca categorías asociadas a una clase específica o desbalances importantes.")
+            for col in explicativas_cols:
+                if col in cat_cols and col != target_col:
+                    cross = pd.crosstab(df[col], df[target_col])
+                    fig = px.bar(cross, barmode="group", title=f"{col} vs {target_col}")
+                    st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("### Scatter plots de variables numéricas coloreados por la variable objetivo")
+            st.info("Cada gráfico muestra la relación entre una variable explicativa y la variable objetivo. Busca tendencias, agrupamientos, relaciones lineales/no lineales y presencia de outliers. Una nube de puntos bien separada o con tendencia clara indica potencial predictivo.")
+            scatter_cols = [col for col in explicativas_cols if col in num_cols and col != target_col]
+            if scatter_cols:
+                col1, col2 = st.columns(2)
+                for i, col in enumerate(scatter_cols):
+                    fig = px.scatter(df, x=col, y=target_col, color=target_col, title=f"{col} vs {target_col}")
+                    with (col1 if i % 2 == 0 else col2):
+                        st.plotly_chart(fig, use_container_width=True)
+            st.markdown("### Boxplot de la variable objetivo por categorías")
+            st.info("Estos gráficos muestran cómo varía la variable objetivo según cada categoría de la variable explicativa. Diferencias claras entre cajas pueden indicar que la variable categórica es relevante para predecir el objetivo.")
+            cat_exp_cols = [col for col in explicativas_cols if col in cat_cols]
+            if cat_exp_cols:
+                for col in cat_exp_cols:
+                    fig = px.box(df, x=col, y=target_col, points="outliers", title=f"Boxplot de {target_col} según {col}")
+                    st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No hay variables categóricas seleccionadas para comparar con la variable objetivo.")
+        st.caption("Estos gráficos ayudan a identificar relaciones predictivas y patrones útiles para el modelado.")
+        st.write("---")
+
+        # === SECCIÓN: Recomendaciones y hallazgos clave ===
+        st.header("Recomendaciones y hallazgos clave")
+        st.markdown("""
+        Resumen de los principales problemas detectados y sugerencias para mejorar la calidad y utilidad del dataset.
+        """)
+        recomendaciones = []
+        if nulos.sum() > 0:
+            recomendaciones.append("Hay columnas con valores nulos. Considera imputar o eliminar filas/columnas según el caso.")
+        if df.duplicated().sum() > 0:
+            recomendaciones.append("Existen filas duplicadas. Se recomienda revisar y limpiar duplicados.")
+        if len(num_cols) > 0:
+            for col in num_cols:
+                skew = df[col].skew()
+                if abs(skew) > 1:
+                    recomendaciones.append(f"La variable '{col}' presenta alta asimetría (skewness={skew:.2f}). Considera transformaciones.")
+        if len(recomendaciones) == 0:
+            st.success("No se detectaron problemas importantes en el análisis exploratorio.")
+        else:
+            for rec in recomendaciones:
+                st.warning(rec)
+        st.write("---")
+    
+    # Botones de navegación al final de la página (siempre visibles)
+    nav_col1, nav_col2 = st.columns(2)
+    with nav_col1:
+        if st.button("⬅️ Volver a Validar Datos", use_container_width=True, key="btn_volver_validar"):
             st.switch_page("pages/Datos/02_Validar_Datos.py")
-    with col2:
-        if st.button("➡️ Configurar Datos"):
+    with nav_col2:
+        if st.button("➡️ Configurar Datos", use_container_width=True, key="btn_ir_configurar"):
             st.switch_page("pages/Datos/04_Configurar_Datos.py")

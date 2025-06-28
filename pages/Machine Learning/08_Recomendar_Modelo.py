@@ -450,26 +450,15 @@ def mostrar_recomendacion(recomendacion, resultados_benchmarking):
     st.subheader("⏩ Próximos pasos")
     
     # Botones de navegación
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         if st.button("🔙 Volver a Evaluar Modelos", use_container_width=True):
             st.switch_page("pages/Machine Learning/06_Evaluar_Modelos.py")
     
     with col2:
-        if st.button("🔬 Validación Cruzada", use_container_width=True):
-            st.switch_page("pages/Machine Learning/07_Validacion_Cruzada.py")
-    
-    with col3:
         if st.button("🧠 Explicar Modelo", use_container_width=True):
             st.switch_page("pages/Machine Learning/09_Explicar_Modelo.py")
-
-    st.info("""
-    Una vez seleccionado el modelo, puede continuar con:
-    - Explicación detallada del modelo (interpretabilidad)
-    - Generación de un reporte completo con los resultados
-    - Exportación del modelo para su uso en producción
-    """)
 
 if __name__ == "__main__":
     main()

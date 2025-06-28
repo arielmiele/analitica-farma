@@ -10,37 +10,26 @@ st.title("Explicación del Modelo: Variables Influyentes")
 
 st.markdown("""
 Esta sección permite interpretar el modelo seleccionado mostrando la importancia de cada variable predictiva usando SHAP.
-Selecciona un modelo entrenado para visualizar la influencia de las variables en sus predicciones.
+El modelo a explicar es el recomendado y seleccionado previamente en el flujo de la aplicación.
 """)
 
-# Cargar modelos disponibles
-dic_modelos = cargar_modelo_entrenado(listar=True)
-dic_modelos = dic_modelos or {}
-if not isinstance(dic_modelos, dict) or not dic_modelos:
-    st.warning("No hay modelos entrenados disponibles. Entrena un modelo antes de continuar.")
-    st.stop()
-
-def nombre_modelo(dic, k):
-    v = dic.get(k)
-    if isinstance(v, dict) and 'nombre' in v:
-        return str(v['nombre'])
-    return str(k)
-
-# Obtener modelo recomendado de la sesión si existe
+# Obtener modelo recomendado de la sesión
 session = SessionManager()
 modelo_recomendado = session.obtener_estado("modelo_recomendado")
 
-if modelo_recomendado and isinstance(modelo_recomendado, dict):
-    modelo_id_default = modelo_recomendado.get('modelo_recomendado', {}).get('id', None)
-else:
-    modelo_id_default = None
+if not modelo_recomendado or not isinstance(modelo_recomendado, dict) or not modelo_recomendado.get('modelo_recomendado'):
+    st.warning("No hay modelo recomendado seleccionado en la sesión. Seleccione un modelo en la sección de recomendación antes de continuar.")
+    st.stop()
 
-modelo_id = st.selectbox(
-    "Selecciona el modelo a explicar:",
-    list(dic_modelos.keys()),
-    format_func=lambda k: nombre_modelo(dic_modelos, k),
-    index=list(dic_modelos.keys()).index(modelo_id_default) if modelo_id_default in dic_modelos else 0
-)
+modelo_id = modelo_recomendado['modelo_recomendado'].get('nombre')
+
+# Cargar modelos disponibles y buscar el modelo recomendado
+modelos_disponibles = cargar_modelo_entrenado(listar=True)
+if not modelos_disponibles or modelo_id not in modelos_disponibles:
+    st.warning("El modelo recomendado no está disponible en los modelos entrenados. Vuelva a entrenar o recomendar un modelo.")
+    st.stop()
+
+st.info(f"Modelo a explicar: **{modelo_id}**", icon="🤖")
 
 # Obtener la columna objetivo persistida desde la configuración de datos
 columna_objetivo = st.session_state.get('variable_objetivo', None)
@@ -65,10 +54,12 @@ except Exception as e:
 if info:
     st.markdown("### Información del dataset de entrada")
     st.write("**Filas:** {}  |  **Columnas:** {}".format(info['Filas'], info['Columnas']))
-    st.write("**Columnas disponibles:** {}".format(', '.join(info['Columnas disponibles'])))
-    st.write("**Tipos de datos:**")
-    st.json(info['Tipos de datos'])
+    with st.expander("Ver columnas disponibles", expanded=False):
+        st.write(", ".join(info['Columnas disponibles']))
+    with st.expander("Ver tipos de datos", expanded=False):
+        st.json(info['Tipos de datos'])
     if X is not None:
+        st.markdown("#### Primeras 10 filas del dataset de entrada")
         st.dataframe(X.head(10))
     if y is not None:
         st.success(f"Columna objetivo detectada: **{columna_objetivo if columna_objetivo else (y.name if hasattr(y, 'name') else str(y))}**")
@@ -77,10 +68,9 @@ if info:
 else:
     st.warning("No se pudo mostrar información del dataset. Verifique la carga de datos.")
 
-st.info(
-    """
-    **¿Por qué es importante este análisis?**
-    
+# Mensaje de importancia del análisis en un expander
+with st.expander("ℹ️ ¿Por qué es importante este análisis?", expanded=False):
+    st.markdown("""
     La explicación de modelos mediante SHAP permite identificar qué variables tienen mayor influencia en las predicciones del modelo. Esto ayuda a:
     - Validar que el modelo utiliza información relevante y no sesgada.
     - Comunicar resultados de manera transparente a equipos técnicos y no técnicos.
@@ -91,9 +81,7 @@ st.info(
     - El gráfico de barras muestra la importancia media de cada variable: cuanto mayor, más impacto tiene en las predicciones.
     - El summary plot de SHAP permite ver cómo los valores altos o bajos de cada variable afectan la salida del modelo.
     - Utiliza estos resultados para discutir con tu equipo y tomar decisiones informadas sobre el uso del modelo.
-    """,
-    icon="ℹ️"
-)
+    """)
 
 if st.button("Explicar modelo"):
     with st.spinner("Calculando importancias SHAP..."):
@@ -118,27 +106,27 @@ if st.button("Explicar modelo"):
                     """,
                     icon="🔍"
                 )
+                # Mensaje genérico sobre la variable más influyente
+                if importancias is not None and not importancias.empty:
+                    variable_top = importancias.index[0]
+                    importancia_top = importancias.iloc[0]
+                    st.warning(f"""
+                    La variable más influyente según SHAP es: **{variable_top}** (importancia media: {importancia_top:.3f}).
+                    
+                    Esto significa que el modelo utiliza principalmente esta variable para predecir el objetivo. Te recomendamos analizar si esta variable es relevante para tu análisis o si podría estar reflejando un sesgo o una relación indirecta. Si consideras que no debería ser la principal, prueba excluirla y vuelve a entrenar el modelo para comparar resultados.
+                    """, icon="⚠️")
             except Exception as e:
-                st.error(f"No se pudo generar la explicación: {e}")
+                st.error(f"Error al generar la explicación: {e}")
 
-    # Botones de navegación
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⬅️ Volver a Recomendación de Modelo", use_container_width=True):
-            st.switch_page("pages/Machine Learning/08_Recomendar_Modelo.py")
-    with col2:
-        if st.button("📊 Generar Reporte", use_container_width=True):
-            st.switch_page("pages/Reportes/10_Reporte.py")
-
-    st.info(
-        """
-        👉 **Siguiente paso recomendado:**
-        
-        Una vez interpretado el modelo, puedes generar un reporte completo para documentar los resultados y compartirlos con tu equipo o para auditoría. Recuerda que la interpretación y la trazabilidad son claves para la toma de decisiones en entornos industriales y farmacéuticos.
-        """,
-        icon="📄"
-    )
+# Botones de navegación
+st.markdown("---")
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔙 Volver a Recomendación de Modelo", use_container_width=True):
+        st.switch_page("pages/Machine Learning/08_Recomendar_Modelo.py")
+with col2:
+    if st.button("📊 Ir a Evaluación Detallada", use_container_width=True):
+        st.switch_page("pages/Machine Learning/06_Evaluar_Modelos.py")
 
 # Si ocurre un error crítico en la carga, mostrar depuración y detener ejecución
 if X is None or (hasattr(X, 'empty') and X.empty):
@@ -152,8 +140,7 @@ if X is None or (hasattr(X, 'empty') and X.empty):
             ("info", info),
             ("X shape", X.shape if X is not None else None),
             ("y shape", y.shape if y is not None else None),
-            ("Modelos disponibles", list(dic_modelos.keys())),
-            ("Modelo seleccionado", modelo_id),
+            ("Modelo recomendado", modelo_id),
         ]
         st.table([[k, v if v not in [None, [], ''] else ':red[None o vacío]'] for k, v in debug_data])
         st.markdown("**Estado de sesión relevante:**")

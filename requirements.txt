@@ -42,3 +42,7 @@ loguru>=0.7.0
 # Exportación y reportes
 jinja2>=3.1.2   # Para plantillas de reportes
 pdfkit>=1.0.0   # Para generación de PDF desde HTML
+
+# Snowflake y dependencias para conexión segura
+snowflake-connector-python>=2.8.0
+snowflake-snowpark-python>=0.9.0

@@ -45,9 +45,26 @@ def main():
     
     # Selección de modelo
     modelo, resultados_benchmarking = seleccionar_modelo()
-    
+
     if modelo and resultados_benchmarking:
         st.markdown("---")
+        
+        # Explicación sobre la configuración de validación cruzada
+        with st.expander("ℹ️ ¿Cómo configurar la validación cruzada?", expanded=True):
+            st.markdown("""
+            **¿Qué es la validación cruzada?**
+            
+            La validación cruzada permite estimar el rendimiento real de un modelo dividiendo los datos en varios subconjuntos ("folds") y repitiendo el entrenamiento y evaluación múltiples veces.
+            
+            **¿Cómo configurar los parámetros?**
+            - **Número de folds para CV:** Define en cuántas partes se divide el dataset para la validación cruzada. Más folds (por ejemplo, 10) dan una estimación más robusta pero requieren más tiempo de cómputo.
+            - **Puntos en curva de aprendizaje:** Determina cuántos tamaños de muestra se usarán para construir la curva de aprendizaje. Más puntos permiten ver mejor la evolución del rendimiento.
+            - **Métrica de evaluación:** Selecciona la métrica principal para comparar el desempeño del modelo (accuracy, f1, precision, recall, roc_auc).
+            - **Semilla aleatoria:** Fija el valor para garantizar resultados reproducibles.
+            - **Procesamiento:** Permite elegir entre ejecución secuencial o paralela (usando todos los núcleos disponibles).
+            
+            > Ajuste estos parámetros según el tamaño de su dataset y el tiempo disponible. En datasets pequeños, usar más folds y más puntos puede ayudar a obtener una mejor estimación del rendimiento.
+            """)
         
         # Configuración de parámetros
         configuracion = configurar_validacion()
@@ -71,24 +88,5 @@ def main():
             if st.button("👑 Ir a Recomendación de Modelo", use_container_width=True):
                 st.switch_page("pages/Machine Learning/08_Recomendar_Modelo.py")
     
-    # Footer informativo
-    with st.expander("📚 Referencias y Documentación", expanded=False):
-        st.markdown("""
-        ### Recursos Adicionales
-        
-        - **Validación de Modelos en GMP**: ICH Q8, Q9, Q10
-        - **Machine Learning en Farmacéutica**: FDA Guidance on Software as Medical Device
-        - **Documentación Técnica**: 21 CFR Part 11 para sistemas electrónicos
-        - **Mejores Prácticas**: GAMP 5 para sistemas computarizados
-        
-        ### Métricas de Evaluación
-        
-        - **Accuracy**: Proporción de predicciones correctas
-        - **F1-Score**: Media armónica entre precisión y recall
-        - **ROC-AUC**: Área bajo la curva ROC para clasificación
-        - **Cross-Validation**: Técnica para estimar el rendimiento del modelo
-        """)
-
-
 if __name__ == "__main__":
     main()

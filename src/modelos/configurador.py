@@ -44,6 +44,16 @@ def guardar_configuracion_modelo(configuracion, id_usuario=1, db_path=None):
                 fecha_creacion TIMESTAMP NOT NULL
             )
         """)
+        # Verificar si existe la tabla de auditoría
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auditoria (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_usuario INTEGER NOT NULL,
+                accion TEXT NOT NULL,
+                descripcion TEXT,
+                fecha TIMESTAMP NOT NULL
+            )
+        """)
         
         # Preparar datos para inserción
         variables_predictoras_json = json.dumps(configuracion.get('variables_predictoras', []))

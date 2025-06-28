@@ -10,7 +10,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from src.audit.logger import setup_logger, log_operation, log_audit
 from src.datos.validador import validar_estructura, validar_variable_objetivo
 from src.modelos.configurador import guardar_configuracion_modelo
-from src.state.session_manager import SessionManager
 
 # Configurar el logger
 usuario_id = st.session_state.get("usuario_id", 1)
@@ -74,7 +73,8 @@ else:
                 log_operation(logger, "SELECCION_TIPO_PROBLEMA", "Usuario seleccionó problema de clasificación")
                 st.rerun()
                 
-    elif st.session_state.paso_configuracion == 1:        # Paso de mapeo: Selección de variable objetivo y variables predictoras
+    elif st.session_state.paso_configuracion == 1:        
+        # Paso de mapeo: Selección de variable objetivo y variables predictoras
         tipo_problema_cap = st.session_state.tipo_problema.capitalize() if st.session_state.tipo_problema else "Problema"
         st.write(f"### Paso 2: Definir variables para {tipo_problema_cap}")
         
@@ -223,15 +223,12 @@ else:
                 st.rerun()
         
         with col2:
-            if st.button("➡️ Analizar Calidad", use_container_width=True):
-                # Marcar etapa de configuración como completada
-                SessionManager.update_progress("configuracion", True)
-                
+            if st.button("➡️ Entrenar Modelos", use_container_width=True):
                 # Registrar acción
                 log_audit(
                     usuario_id, 
                     "NAVEGACION", 
-                    "analizar_calidad", 
-                    f"Continuar con análisis de calidad para {st.session_state.filename}"
+                    "entrenar_modelos", 
+                    f"Continuar con entrenamiento de modelos para {st.session_state.filename}"
                 )
-                st.switch_page("pages/Datos/03_Analizar_Calidad.py")
+                st.switch_page("pages/Machine Learning/05_Entrenar_Modelos.py")

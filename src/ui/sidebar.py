@@ -54,11 +54,9 @@ class SidebarComponents:
                 # Mostrar información de configuración si está disponible en formato compacto
                 if dataset_info.get('variable_objetivo'):
                     st.write("---")
-                    # Mostrar en formato más compacto
                     tipo_problema = dataset_info.get('tipo_problema', '').capitalize()
                     var_obj = dataset_info.get('variable_objetivo')
-                    
-                    st.write(f"**Problema:** {tipo_problema} → **Objetivo:** {var_obj}")
+                    st.write(f"**Problema:** {tipo_problema} → **Objetivo:** `{var_obj}`")
                     
                     # Mostrar predictores en forma compacta
                     if dataset_info.get('num_predictores', 0) > 0:
@@ -81,6 +79,35 @@ class SidebarComponents:
                         st.switch_page("pages/Datos/01_Cargar_Datos.py")
     
     @staticmethod
+    def render_model_info() -> None:
+        """
+        Renderiza la información del modelo de ML seleccionado en el sidebar
+        """
+        modelo_recomendado = SessionManager.obtener_estado("modelo_recomendado", None)
+        if modelo_recomendado and isinstance(modelo_recomendado, dict):
+            modelo = modelo_recomendado.get("modelo_recomendado", {})
+            if modelo:
+                with st.expander("🤖 Modelo Seleccionado", expanded=True):
+                    st.write(f"**Nombre:** {modelo.get('nombre', 'N/A')}")
+                    st.write(f"**Tipo de problema:** {modelo_recomendado.get('tipo_problema', 'N/A').capitalize()}")
+                    st.write(f"**Variable objetivo:** {modelo_recomendado.get('variable_objetivo', 'N/A')}")
+                    st.write(f"**Criterio de selección:** {modelo_recomendado.get('criterio_usado', 'N/A').upper()}")
+                    st.write(f"**Evaluados:** {modelo_recomendado.get('total_modelos_evaluados', 'N/A')}")
+                    st.write(f"**Fecha recomendación:** {modelo_recomendado.get('timestamp', 'N/A')}")
+                    # Métricas principales
+                    metricas = modelo.get('metricas', {})
+                    if metricas:
+                        st.write("---")
+                        st.write("**Métricas principales:**")
+                        for k, v in metricas.items():
+                            if isinstance(v, (int, float)):
+                                st.write(f"- {k.title()}: {v:.4f}")
+                            else:
+                                st.write(f"- {k.title()}: {v}")
+            else:
+                st.info("No hay modelo seleccionado actualmente.")
+
+    @staticmethod
     def render_sidebar() -> None:
         """
         Renderiza el sidebar completo
@@ -88,4 +115,5 @@ class SidebarComponents:
         with st.sidebar:
             # Renderizar solo los componentes esenciales
             SidebarComponents.render_user_info()  # Información del usuario
-            SidebarComponents.render_dataset_info()
+            SidebarComponents.render_dataset_info()  # Información del dataset
+            SidebarComponents.render_model_info()  # Información del modelo seleccionado

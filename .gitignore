@@ -422,3 +422,21 @@ docs-private/
 *.sqlite
 *.sqlite3
 analitica_farma.db
+
+# Ignorar secretos y configuraciones locales de Streamlit
+.streamlit/secrets.toml
+# Ignorar archivos de base de datos y backups
+*.db
+*.sqlite
+backups/
+# Ignorar archivos temporales y de sistema
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+# Ignorar logs
+*.log
+# Ignorar cachés de Python
+__pycache__/
+*.pyc
+.env

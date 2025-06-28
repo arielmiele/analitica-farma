@@ -16,9 +16,7 @@ from src.modelos.evaluador import (
     comparar_metricas_regresion,
     calcular_matriz_confusion_detallada,
     calcular_curvas_roc_completas,
-    crear_dataframe_comparacion_regresion,
-    generar_datos_grafico_comparacion_regresion,
-    calcular_metricas_modelo_individual
+    generar_datos_grafico_comparacion_regresion
 )
 from src.modelos.visualizador import (
     generar_matriz_confusion, 

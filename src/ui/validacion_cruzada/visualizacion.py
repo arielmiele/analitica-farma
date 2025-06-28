@@ -355,10 +355,10 @@ def crear_grafico_curvas_aprendizaje(learning_curves, nombre_modelo):
         fig = make_subplots(
             rows=2, cols=1,
             subplot_titles=(
-                'Curvas de Aprendizaje',
-                'Gap de Overfitting (Entrenamiento - Validación)'
+                '<b>Curvas de Aprendizaje</b><br><span style="font-size:12px; color:gray;">Entrenamiento vs Validación</span>',
+                '<b>Gap de Overfitting (Entrenamiento - Validación)</b>'
             ),
-            vertical_spacing=0.1
+            vertical_spacing=0.18  # Aumenta el espacio vertical entre los gráficos
         )
         
         # Gráfico 1: Curvas de aprendizaje

@@ -3,6 +3,7 @@ import streamlit as st
 # Importar módulos del proyecto reorganizado
 from src.state.session_manager import SessionManager
 from src.ui.sidebar import SidebarComponents
+from src.datos.snowflake_conn import get_snowflake_connection
 
 # Configuración global de la app (título e ícono en la pestaña)
 st.set_page_config(page_title="Analitica Farma", page_icon=":pill:", layout="wide")
