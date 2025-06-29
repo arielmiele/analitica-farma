@@ -33,4 +33,4 @@ snowflake-connector-python>=2.8.0
 pyarrow<19.0.0
 alembic==1.16.2
 altair==5.5.0
-llmvlite==0.44.0
+llmvlite
