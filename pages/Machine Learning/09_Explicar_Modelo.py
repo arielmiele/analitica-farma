@@ -170,7 +170,7 @@ with col1:
         st.switch_page("pages/Machine Learning/08_Recomendar_Modelo.py")
 with col2:
     if st.button("📊 Ir a Evaluación Detallada", use_container_width=True):
-        st.switch_page("pages/Machine Learning/06_Evaluar_Modelos.py")
+        st.switch_page("pages/Reportes/10_Reporte.py")
 
 # Si ocurre un error crítico en la carga, mostrar depuración y detener ejecución
 if X is None or (hasattr(X, 'empty') and X.empty):
