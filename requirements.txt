@@ -13,7 +13,7 @@ numpy==2.3.0
 plotly==6.1.2
 openpyxl==3.1.5
 scipy==1.15.3
-shap>=0.43.0
+shap
 lightgbm==4.6.0
 xgboost==3.0.2
 catboost>=1.2.0
@@ -33,6 +33,3 @@ snowflake-connector-python>=2.8.0
 pyarrow<19.0.0
 alembic==1.16.2
 altair==5.5.0
-
-# Dependencias mínimas para el funcionamiento y visualización
-# Si necesitas alguna dependencia extra, agrégala aquí justificando su uso
