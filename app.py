@@ -47,20 +47,20 @@ def deslogueo():
        
     with col1:
         if st.button("🚪 Deslogueo", use_container_width=True):
-            st.session_state.logged_in = False
+            SessionManager.logout()
             st.rerun()
     with col2:
-            if st.button("📊 Cargar datos", use_container_width=True):
-                st.switch_page("pages/Datos/01_Cargar_Datos.py")
+        if st.button("📊 Cargar datos", use_container_width=True):
+            st.switch_page("pages/Datos/01_Cargar_Datos.py")
 
 # Crear el layout con sidebar permanente
 if SessionManager.is_logged_in():    
     # Definición de páginas usando st.Page (cada una puede ser un script o función)
     pagina_deslogueo = st.Page(deslogueo, title="Bienvenida", icon=":material/home:", default=True)
-    cargar_datos = st.Page("pages/Datos/01_Cargar_Datos.py", title="1. Cargar Datos", icon=":material/database_upload:")
-    validar_datos = st.Page("pages/Datos/02_Validar_Datos.py", title="2. Validar Datos", icon=":material/wand_stars:")
-    analizar_calidad = st.Page("pages/Datos/03_Analizar_Calidad.py", title="3. Analizar Calidad", icon=":material/analytics:")
-    configurar_datos = st.Page("pages/Datos/04_Configurar_Datos.py", title="4. Configurar Datos", icon=":material/check_circle:")
+    cargar_datos = st.Page("pages/Datos/01_Cargar_Datos.py", title="Cargar Datos", icon=":material/database_upload:")
+    validar_datos = st.Page("pages/Datos/02_Validar_Datos.py", title="Validar Datos", icon=":material/wand_stars:")
+    analizar_calidad = st.Page("pages/Datos/03_Analizar_Calidad.py", title="Analizar Calidad", icon=":material/analytics:")
+    configurar_datos = st.Page("pages/Datos/04_Configurar_Datos.py", title="Configurar Datos", icon=":material/check_circle:")
     entrenar_modelos = st.Page("pages/Machine Learning/05_Entrenar_Modelos.py", title="Entrenar Modelos", icon=":material/model_training:")
     evaluar_modelos = st.Page("pages/Machine Learning/06_Evaluar_Modelos.py", title="Evaluar Modelos", icon=":material/network_intel_node:")
     validacion_cruzada = st.Page("pages/Machine Learning/07_Validacion_Cruzada.py", title="Validación Cruzada", icon=":material/science:")

@@ -52,7 +52,7 @@ def procesar_archivo_csv(uploaded_file, **kwargs):
         dict: Metadatos de validación
     """
     try:
-        df, metadatos = cargar_datos_desde_csv(uploaded_file, **kwargs)
+        df, metadatos = cargar_datos_desde_csv(uploaded_file, id_sesion=id_sesion, **kwargs)
         warnings, metadatos_validacion = validar_dataframe_csv(df, id_sesion=id_sesion)
         log_audit(
             usuario=str(usuario_id),
@@ -227,90 +227,77 @@ if st.session_state.get("df") is not None:
         st.write(f"- **Filas:** {df.shape[0]}  |  **Columnas:** {df.shape[1]}")
         st.dataframe(df.head(10), use_container_width=True)
         st.divider()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Cargar un dataset diferente", use_container_width=True):
-                st.session_state.df = None
-                st.session_state.filename = None
-                st.session_state.metadatos = None
-                st.session_state.upload_timestamp = None
-                st.session_state.variables_predictoras = []
-                for key in ["predictores", "target", "variable_objetivo"]:
-                    if key in st.session_state:
-                        del st.session_state[key]
-                st.rerun()
-        with col2:
-            if st.button("➡️ Validar Datos", use_container_width=True):
-                st.switch_page("pages/Datos/02_Validar_Datos.py")
-    
-    # Opción para guardar el dataset cargado en Snowflake
-    if tipo_carga == "Subir archivo CSV" and st.session_state.get("df") is not None:
-        with st.expander("💾 Guardar dataset en Snowflake", expanded=False):
-            nombre_dataset = st.text_input("Nombre del dataset", value=st.session_state.get("filename", ""))
-            descripcion_dataset = st.text_area("Descripción", value="")
-            guardar_btn = st.button("Guardar en Snowflake", use_container_width=True, disabled=not nombre_dataset)
-            if guardar_btn:
-                usuario_creador = st.session_state.get("usuario_id", "anonimo")
-                df = st.session_state.df
-                if df is not None:
-                    ok = guardar_dataset(
-                        nombre_dataset,
-                        descripcion_dataset,
-                        usuario_creador,
-                        df,
-                        id_sesion=id_sesion,
-                        usuario=str(usuario_id)
-                    )
-                    if ok:
-                        st.success("Dataset guardado exitosamente en Snowflake.")
-                        log_audit(
-                            usuario=str(usuario_id),
-                            accion="GUARDAR_DATASET",
-                            entidad=nombre_dataset,
-                            id_entidad="",
-                            detalles="Dataset guardado exitosamente en Snowflake.",
-                            id_sesion=id_sesion
+        # Opción para guardar el dataset cargado en Snowflake
+        if tipo_carga == "Subir archivo CSV" and st.session_state.get("df") is not None:
+            with st.expander("💾 Guardar dataset en Snowflake", expanded=False):
+                nombre_dataset = st.text_input("Nombre del dataset", value=st.session_state.get("filename", ""))
+                descripcion_dataset = st.text_area("Descripción", value="")
+                guardar_btn = st.button("Guardar en Snowflake", use_container_width=True, disabled=not nombre_dataset)
+                if guardar_btn:
+                    usuario_creador = str(st.session_state.get("usuario_id", "anonimo"))
+                    df = st.session_state.df
+                    if df is not None:
+                        ok = guardar_dataset(
+                            nombre_dataset,
+                            descripcion_dataset,
+                            usuario_creador,
+                            df,
+                            id_sesion=id_sesion,
+                            usuario=str(usuario_id)
                         )
+                        if ok:
+                            st.success("Dataset guardado exitosamente en Snowflake.")
+                            log_audit(
+                                usuario=str(usuario_id),
+                                accion="GUARDAR_DATASET",
+                                entidad=nombre_dataset,
+                                id_entidad="",
+                                detalles="Dataset guardado exitosamente en Snowflake.",
+                                id_sesion=id_sesion
+                            )
+                        else:
+                            st.error("Error al guardar el dataset en Snowflake.")
+                            log_audit(
+                                usuario=str(usuario_id),
+                                accion="ERROR_GUARDAR_DATASET",
+                                entidad=nombre_dataset,
+                                id_entidad="",
+                                detalles="Error al guardar el dataset en Snowflake.",
+                                id_sesion=id_sesion
+                            )
                     else:
-                        st.error("Error al guardar el dataset en Snowflake.")
+                        st.error("No hay datos cargados para guardar en Snowflake.")
                         log_audit(
                             usuario=str(usuario_id),
                             accion="ERROR_GUARDAR_DATASET",
                             entidad=nombre_dataset,
                             id_entidad="",
-                            detalles="Error al guardar el dataset en Snowflake.",
+                            detalles="No hay datos cargados para guardar en Snowflake.",
                             id_sesion=id_sesion
                         )
-                else:
-                    st.error("No hay datos cargados para guardar en Snowflake.")
-                    log_audit(
-                        usuario=str(usuario_id),
-                        accion="ERROR_GUARDAR_DATASET",
-                        entidad=nombre_dataset,
-                        id_entidad="",
-                        detalles="No hay datos cargados para guardar en Snowflake.",
-                        id_sesion=id_sesion
-                    )
 
-    # Mostrar datasets disponibles en Snowflake (listado y opción de eliminar)
-    with st.expander("📚 Datasets disponibles en Snowflake", expanded=False):
-        usuario_creador = st.session_state.get("usuario_id", None)
-        datasets = listar_datasets(
-            usuario=str(usuario_creador),
-            id_sesion=id_sesion
-        )
-        if datasets:
-            for ds in datasets:
-                st.write(f"- **{ds['NOMBRE']}** ({ds['ID_DATASET']}) - {ds['DESCRIPCION']}")
-                # Opción para eliminar el dataset físico (solo si tiene metadatos de tabla física)
-                if 'TABLA_FISICA' in ds and 'ESQUEMA_FISICO' in ds:
-                    col_del1, col_del2 = st.columns([0.8, 0.2])
-                    with col_del2:
-                        eliminar_btn = st.button("🗑️ Eliminar", key=f"eliminar_{ds['ID_DATASET']}", use_container_width=True)
+        # Mostrar datasets disponibles en Snowflake (listado y opción de eliminar)
+        with st.expander("📚 Datasets disponibles en Snowflake", expanded=False):
+            usuario_creador = st.session_state.get("usuario_id", None)
+            datasets = listar_datasets(
+                usuario=str(usuario_creador),
+                id_sesion=id_sesion
+            )
+            if datasets:
+                for ds in datasets:
+                    st.write(f"- **{ds['NOMBRE']}** ({ds['ID_DATASET']}) - {ds['DESCRIPCION']}")
+                    # Opción para eliminar el dataset físico (solo si tiene metadatos de tabla física)
+                    if 'TABLA_FISICA' in ds and 'ESQUEMA_FISICO' in ds:
+                        eliminar_btn = st.button(
+                            f"🗑️ Eliminar '{ds['TABLA_FISICA']}' del esquema '{ds['ESQUEMA_FISICO']}'",
+                            key=f"eliminar_{ds['ID_DATASET']}"
+                        )
                         if eliminar_btn:
                             from src.snowflake.datasets_db import eliminar_tabla_fisica
-                            confirm = st.warning(f"¿Seguro que deseas eliminar la tabla física '{ds['TABLA_FISICA']}' del esquema '{ds['ESQUEMA_FISICO']}'? Esta acción no se puede deshacer.", icon="⚠️")
-                            confirmar = st.button(f"Confirmar eliminación de {ds['TABLA_FISICA']}", key=f"confirmar_{ds['ID_DATASET']}", use_container_width=True)
+                            confirmar = st.checkbox(
+                                f"Confirmar eliminación de {ds['TABLA_FISICA']} ({ds['ID_DATASET']})",
+                                key=f"confirmar_{ds['ID_DATASET']}"
+                            )
                             if confirmar:
                                 ok = eliminar_tabla_fisica(
                                     ds['TABLA_FISICA'],
@@ -339,5 +326,22 @@ if st.session_state.get("df") is not None:
                                         detalles=f"No se pudo eliminar la tabla '{ds['TABLA_FISICA']}' del esquema '{ds['ESQUEMA_FISICO']}'",
                                         id_sesion=id_sesion
                                     )
-        else:
-            st.info("No hay datasets disponibles para este usuario.")
+            else:
+                st.info("No hay datasets disponibles para este usuario.")
+    # Botones de acción al final de la página
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 Cargar un dataset diferente", use_container_width=True):
+            st.session_state.df = None
+            st.session_state.filename = None
+            st.session_state.metadatos = None
+            st.session_state.upload_timestamp = None
+            st.session_state.variables_predictoras = []
+            for key in ["predictores", "target", "variable_objetivo"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+    with col2:
+        if st.button("➡️ Validar Datos", use_container_width=True):
+            st.switch_page("pages/Datos/02_Validar_Datos.py")

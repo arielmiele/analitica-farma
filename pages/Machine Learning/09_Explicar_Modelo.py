@@ -115,12 +115,83 @@ if st.button("Explicar modelo"):
                     id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
                     usuario=session.obtener_estado("usuario_id", "sistema")
                 )
+                # Filtrar X_pre para que tenga solo las columnas usadas en el entrenamiento
+                feature_names = None
+                # 1. Intentar obtener desde la sesión
+                feature_names_session = st.session_state.get('variables_predictoras', None)
+                if feature_names_session:
+                    feature_names = feature_names_session
+                    st.info("Variables predictoras obtenidas desde la sesión.")
+                # 2. Si no están en sesión, intentar desde el modelo (solo si es un objeto válido)
+                elif modelo is not None and not isinstance(modelo, dict) and hasattr(modelo, 'feature_names_in_') and getattr(modelo, 'feature_names_in_', None) is not None:
+                    feature_names = list(modelo.feature_names_in_)
+                    st.info("Variables predictoras obtenidas desde el modelo entrenado.")
+                # 3. Si no, intentar desde la configuración guardada
+                else:
+                    try:
+                        from src.modelos.configurador import obtener_configuracion_modelo
+                        config = obtener_configuracion_modelo(
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                            usuario=session.obtener_estado("usuario_id", "sistema"),
+                            id_configuracion=modelo_id
+                        )
+                        if config and 'variables_predictoras' in config:
+                            feature_names = config['variables_predictoras']
+                            st.info("Variables predictoras recuperadas desde la configuración guardada.")
+                        else:
+                            st.warning("No se pudo determinar las variables usadas en el entrenamiento. Verifica la serialización del modelo o la consistencia de las variables predictoras.")
+                            log_audit(
+                                usuario=session.obtener_estado("usuario_id", "sistema"),
+                                accion="ADVERTENCIA_EXPLICACION",
+                                entidad="explicar_modelo",
+                                id_entidad=modelo_id,
+                                detalles="No se pudo determinar las variables predictoras ni desde la sesión, el modelo ni la configuración.",
+                                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                            )
+                    except Exception as e:
+                        st.warning(f"Error al recuperar variables predictoras desde la configuración: {e}")
+                        log_audit(
+                            usuario=session.obtener_estado("usuario_id", "sistema"),
+                            accion="ERROR_EXPLICACION",
+                            entidad="explicar_modelo",
+                            id_entidad=modelo_id,
+                            detalles=f"Error al recuperar variables desde configuración: {str(e)}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                        )
+                if feature_names:
+                    try:
+                        X_pre = X_pre[feature_names]
+                    except Exception as e:
+                        st.warning(f"No se pudieron filtrar las variables predictoras: {e}. Verifica que el dataset de entrada tenga las mismas columnas que el modelo.")
+                        log_audit(
+                            usuario=session.obtener_estado("usuario_id", "sistema"),
+                            accion="ERROR_EXPLICACION",
+                            entidad="explicar_modelo",
+                            id_entidad=modelo_id,
+                            detalles=f"Error al filtrar variables predictoras: {str(e)}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                        )
+                        st.stop()
+                else:
+                    st.warning("No se pudo determinar las variables predictoras. Considera reentrenar el modelo o revisar la serialización.")
+                    st.info("Puedes reentrenar el modelo para asegurar que las variables se guarden correctamente.")
+                    st.stop()
                 importancias, shap_values = obtener_importancias_shap(
                     modelo,
                     X_pre,
                     id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
                     usuario=session.obtener_estado("usuario_id", "sistema")
                 )
+                # Guardar interpretabilidad en la sesión
+                interpretabilidad_data = {
+                    'importancias': importancias.to_dict() if hasattr(importancias, 'to_dict') else importancias,
+                    'shap_values': shap_values.tolist() if hasattr(shap_values, 'tolist') else shap_values,
+                    'columnas': list(X_pre.columns),
+                    'modelo_id': modelo_id,
+                    'usuario': session.obtener_estado("usuario_id", "sistema"),
+                    'id_sesion': session.obtener_estado("id_sesion", "sin_sesion")
+                }
+                session.guardar_estado("interpretabilidad", interpretabilidad_data)
                 mostrar_grafico_importancias(importancias, shap_values, X_pre)
                 st.success("Explicación generada correctamente.")
                 log_audit(
@@ -142,26 +213,17 @@ if st.button("Explicar modelo"):
                     """,
                     icon="🔍"
                 )
-                # Mensaje genérico sobre la variable más influyente
-                if importancias is not None and not importancias.empty:
-                    variable_top = importancias.index[0]
-                    importancia_top = importancias.iloc[0]
-                    st.warning(f"""
-                    La variable más influyente según SHAP es: **{variable_top}** (importancia media: {importancia_top:.3f}).
-                    
-                    Esto significa que el modelo utiliza principalmente esta variable para predecir el objetivo. Te recomendamos analizar si esta variable es relevante para tu análisis o si podría estar reflejando un sesgo o una relación indirecta. Si consideras que no debería ser la principal, prueba excluirla y vuelve a entrenar el modelo para comparar resultados.
-                    """, icon="⚠️")
             except Exception as e:
-                st.error(f"Error al generar la explicación: {e}")
+                st.error(f"Error al calcular las importancias SHAP: {e}")
                 log_audit(
                     usuario=session.obtener_estado("usuario_id", "sistema"),
                     accion="ERROR_EXPLICACION",
                     entidad="explicar_modelo",
                     id_entidad=modelo_id,
-                    detalles=f"Error al generar explicación SHAP: {str(e)}",
+                    detalles=f"Error al calcular importancias SHAP: {str(e)}",
                     id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                 )
-
+                
 # Botones de navegación
 st.markdown("---")
 col1, col2 = st.columns(2)
@@ -169,7 +231,7 @@ with col1:
     if st.button("🔙 Volver a Recomendación de Modelo", use_container_width=True):
         st.switch_page("pages/Machine Learning/08_Recomendar_Modelo.py")
 with col2:
-    if st.button("📊 Ir a Evaluación Detallada", use_container_width=True):
+    if st.button("📊 Ir a la Generación de Reporte", use_container_width=True):
         st.switch_page("pages/Reportes/10_Reporte.py")
 
 # Si ocurre un error crítico en la carga, mostrar depuración y detener ejecución

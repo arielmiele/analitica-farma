@@ -6,14 +6,12 @@ Cumple HU13: compila automáticamente resultados, visualizaciones y recomendacio
 from datetime import datetime
 from fpdf import FPDF
 import uuid
-import base64
 from src.snowflake.modelos_db import get_native_snowflake_connection
 
 # Sección: Función principal para generar el reporte completo
 
 def generar_reporte_completo(
     calidad_datos: dict,
-    transformaciones: list,
     benchmarking: dict,
     modelo_seleccionado: dict,
     interpretabilidad: dict,
@@ -54,54 +52,63 @@ def generar_reporte_completo(
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "1. Calidad de datos", ln=True)
     pdf.set_font("Arial", '', 12)
-    for k, v in calidad_datos.items():
-        pdf.cell(0, 8, f"{k}: {v}", ln=True)
+    if isinstance(calidad_datos, dict) and 'mensaje' in calidad_datos:
+        pdf.cell(0, 8, calidad_datos['mensaje'], ln=True)
+    else:
+        for k, v in calidad_datos.items():
+            pdf.cell(0, 8, f"{k}: {v}", ln=True)
     if imagenes and 'calidad' in imagenes:
         _agregar_imagen(pdf, imagenes['calidad'], "calidad.png")
     pdf.ln(5)
-    # Sección: Transformaciones aplicadas
+    # Sección: Modelos evaluados (ahora es la sección 2)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "2. Transformaciones aplicadas", ln=True)
+    pdf.cell(0, 10, "2. Modelos evaluados", ln=True)
     pdf.set_font("Arial", '', 12)
-    for t in transformaciones:
-        pdf.multi_cell(0, 8, f"- {t}")
-    pdf.ln(5)
-    # Sección: Modelos evaluados
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "3. Modelos evaluados", ln=True)
-    pdf.set_font("Arial", '', 12)
-    for modelo, metricas in benchmarking.items():
-        pdf.cell(0, 8, f"{modelo}: {metricas}", ln=True)
+    if isinstance(benchmarking, dict) and 'mensaje' in benchmarking:
+        pdf.cell(0, 8, benchmarking['mensaje'], ln=True)
+    else:
+        for modelo, metricas in benchmarking.items():
+            pdf.cell(0, 8, f"{modelo}: {metricas}", ln=True)
     if imagenes and 'benchmarking' in imagenes:
         _agregar_imagen(pdf, imagenes['benchmarking'], "benchmarking.png")
     pdf.ln(5)
-    # Sección: Modelo seleccionado
+    # Sección: Modelo seleccionado (ahora es la sección 3)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "4. Modelo seleccionado", ln=True)
+    pdf.cell(0, 10, "3. Modelo seleccionado", ln=True)
     pdf.set_font("Arial", '', 12)
-    for k, v in modelo_seleccionado.items():
-        pdf.cell(0, 8, f"{k}: {v}", ln=True)
-    pdf.ln(5)
-    # Sección: Interpretabilidad
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "5. Interpretabilidad", ln=True)
-    pdf.set_font("Arial", '', 12)
-    for k, v in interpretabilidad.items():
-        if k != 'imagen' and k != 'imagenes':
+    if isinstance(modelo_seleccionado, dict) and 'mensaje' in modelo_seleccionado:
+        pdf.cell(0, 8, modelo_seleccionado['mensaje'], ln=True)
+    else:
+        for k, v in modelo_seleccionado.items():
             pdf.cell(0, 8, f"{k}: {v}", ln=True)
+    pdf.ln(5)
+    # Sección: Interpretabilidad (ahora es la sección 4)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "4. Interpretabilidad", ln=True)
+    pdf.set_font("Arial", '', 12)
+    if isinstance(interpretabilidad, dict) and 'mensaje' in interpretabilidad:
+        pdf.cell(0, 8, interpretabilidad['mensaje'], ln=True)
+    else:
+        for k, v in interpretabilidad.items():
+            if k != 'imagen' and k != 'imagenes':
+                pdf.cell(0, 8, f"{k}: {v}", ln=True)
     if imagenes and 'interpretabilidad' in imagenes:
         _agregar_imagen(pdf, imagenes['interpretabilidad'], "interpretabilidad.png")
     pdf.ln(5)
-    # Recomendaciones finales
+    # Recomendaciones finales (ahora es la sección 5)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "6. Recomendaciones finales", ln=True)
+    pdf.cell(0, 10, "5. Recomendaciones finales", ln=True)
     pdf.set_font("Arial", '', 12)
-    if 'recomendaciones' in interpretabilidad:
+    if isinstance(interpretabilidad, dict) and 'recomendaciones' in interpretabilidad:
         pdf.multi_cell(0, 8, interpretabilidad['recomendaciones'])
     else:
         pdf.cell(0, 8, "No se generaron recomendaciones específicas.", ln=True)
     # Guardar PDF en memoria
-    pdf_bytes = pdf.output(dest='S')
+    pdf_raw = pdf.output(dest='S')
+    if isinstance(pdf_raw, str):
+        pdf_bytes = pdf_raw.encode('latin1')
+    else:
+        pdf_bytes = bytes(pdf_raw)
     return {'nombre_archivo': nombre_archivo, 'pdf_bytes': pdf_bytes}
 
 def _agregar_imagen(pdf, img_bytes, nombre_temp):
@@ -120,31 +127,32 @@ def guardar_reporte_en_snowflake(
     usuario: str,
     id_modelo: str,
     id_dataset: str,
-    pdf_bytes: bytes,
+    resultados: dict,
     id_sesion: str
 ) -> str:
     """
-    Guarda el reporte PDF en la tabla REPORTES de Snowflake.
+    Guarda solo la metadata y los resultados estructurados del reporte en la tabla REPORTES de Snowflake.
+    El PDF NO se almacena, solo los datos tabulares/resultados y la metadata.
     """
     id_reporte = str(uuid.uuid4())
-    reporte_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+    import json
     conn = get_native_snowflake_connection()
     try:
         sql = '''
         INSERT INTO ANALITICA_FARMA.PUBLIC.REPORTES
         (ID_REPORTE, NOMBRE, TIPO, USUARIO, ID_MODELO, ID_DATASET, REPORTE, ID_SESION)
-        VALUES (%(id_reporte)s, %(nombre)s, %(tipo)s, %(usuario)s, %(id_modelo)s, %(id_dataset)s, %(reporte)s, %(id_sesion)s)
+        VALUES (%s, %s, %s, %s, %s, %s, PARSE_JSON(%s), %s)
         '''
-        conn.cursor().execute(sql, {
-            'id_reporte': id_reporte,
-            'nombre': nombre_archivo,
-            'tipo': tipo,
-            'usuario': usuario,
-            'id_modelo': id_modelo,
-            'id_dataset': id_dataset,
-            'reporte': reporte_b64,
-            'id_sesion': id_sesion
-        })
+        conn.cursor().execute(sql, [
+            id_reporte,
+            nombre_archivo,
+            tipo,
+            usuario,
+            id_modelo,
+            id_dataset,
+            json.dumps(resultados),
+            id_sesion
+        ])
         return id_reporte
     finally:
         conn.close()

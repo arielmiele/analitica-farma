@@ -205,21 +205,37 @@ class SessionManager:
     @staticmethod
     def logout() -> None:
         """
-        Cierra la sesión del usuario actual y limpia los datos de sesión
+        Cierra la sesión del usuario actual y limpia los datos de sesión.
+        Además, actualiza el estado de la sesión en Snowflake a INACTIVA y registra la fecha de cierre.
         """
+        # Actualizar estado de la sesión en Snowflake si existe id_sesion
+        id_sesion = st.session_state.get("id_sesion", None)
+        if id_sesion:
+            try:
+                conn = get_native_snowflake_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE SESIONES SET ESTADO = %s, FECHA_FIN = CURRENT_TIMESTAMP()
+                    WHERE ID_SESION = %s
+                    """,
+                    ("INACTIVA", id_sesion)
+                )
+                conn.commit()
+                cursor.close()
+                conn.close()
+            except Exception:
+                # Loguear el error si se desea, pero continuar con el logout local
+                pass
+            # Eliminar id_sesion para forzar nueva sesión en próximo login
+            if "id_sesion" in st.session_state:
+                del st.session_state["id_sesion"]
+        # Limpiar variables de sesión de usuario
         for key in list(st.session_state.keys()):
             if (isinstance(key, str) and key.startswith('usuario_')) or key in ['authenticated', 'current_user']:
                 del st.session_state[key]
-        
         # Aseguramos que logged_in sea False
         st.session_state.logged_in = False
-        
-        # Redirigir a la página de login
-        try:
-            st.switch_page("pages/00_Logueo.py")
-        except Exception:
-            # Si hay un error al redirigir, simplemente continuamos
-            pass
     
     @staticmethod
     def set_user(usuario_id: int, usuario_nombre: str, usuario_rol: str, usuario_email: str):

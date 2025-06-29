@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 from src.audit.logger import setup_logger, log_audit
+from src.state.session_manager import SessionManager
+from src.datos import analizador
 
 logger = setup_logger("analisis_calidad")
 usuario_id = st.session_state.get("usuario_id", "sistema")
@@ -247,6 +249,27 @@ else:
                 st.warning(rec)
         st.write("---")
     
+    # === GUARDADO DE CALIDAD DE DATOS EN SESIÓN ===
+    session = SessionManager()
+    id_sesion = st.session_state.get("id_sesion", "sin_sesion")
+    df = st.session_state.df if 'df' in st.session_state else None
+
+    if df is not None:
+        calidad_datos = {}
+        # Métricas globales
+        calidad_datos['global'] = analizador.calcular_metricas_basicas(df, id_sesion)
+        calidad_datos['evaluacion'] = analizador.evaluar_calidad_global(df, id_sesion)
+        # Nulos por columna
+        calidad_datos['nulos_por_columna'] = analizador.analizar_nulos_por_columna(df, id_sesion).to_dict(orient='records')
+        # Duplicados
+        calidad_datos['duplicados'] = analizador.analizar_duplicados(df, id_sesion=id_sesion)
+        # Outliers
+        calidad_datos['outliers'] = analizador.detectar_outliers(df, id_sesion=id_sesion)
+        # Estadísticas por columna
+        calidad_datos['estadisticas_columnas'] = analizador.generar_estadisticas_por_columna(df, id_sesion).to_dict(orient='records')
+        # Guardar en sesión
+        session.guardar_estado("calidad_datos", calidad_datos)
+
     # Botones de navegación al final de la página (siempre visibles)
     nav_col1, nav_col2 = st.columns(2)
     with nav_col1:

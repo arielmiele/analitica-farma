@@ -29,25 +29,26 @@ def guardar_configuracion_modelo(configuracion, id_usuario, id_sesion, usuario):
         configuracion_json = json.dumps(configuracion)
         fecha_creacion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Insertar la configuración
+        # Insertar la configuración (ahora incluye ID_SESION)
         insert_query = """
             INSERT INTO CONFIGURACIONES_MODELO (
-                ID_USUARIO, TIPO_PROBLEMA, VARIABLE_OBJETIVO, 
+                ID_USUARIO, ID_SESION, TIPO_PROBLEMA, VARIABLE_OBJETIVO, 
                 VARIABLES_PREDICTORAS, CONFIGURACION_COMPLETA, FECHA_CREACION
-            ) VALUES (%s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(insert_query, (
             id_usuario,
+            id_sesion,
             tipo_problema,
             variable_objetivo,
             variables_predictoras_json,
             configuracion_json,
             fecha_creacion
         ))
-        # Obtener el ID de la configuración insertada (por usuario y timestamp)
+        # Obtener el ID de la configuración insertada (por usuario, sesión y timestamp)
         cursor.execute(
-            "SELECT MAX(ID) FROM CONFIGURACIONES_MODELO WHERE ID_USUARIO = %s AND FECHA_CREACION = %s",
-            (id_usuario, fecha_creacion)
+            "SELECT MAX(ID) FROM CONFIGURACIONES_MODELO WHERE ID_USUARIO = %s AND ID_SESION = %s AND FECHA_CREACION = %s",
+            (id_usuario, id_sesion, fecha_creacion)
         )
         result = cursor.fetchone()
         config_id = result[0] if result and result[0] is not None else None
