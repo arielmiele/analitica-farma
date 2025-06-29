@@ -1,6 +1,140 @@
 # analitica-farma
 
-Aplicación para analizar datos productivos en la industria farmacéutica y recomendar modelos de machine learning. Permite cargar datos, configurarlos, validarlos, transformarlos, evaluar modelos y generar reportes. Desarrollada con Streamlit, Python y SQLite para almacenamiento local.
+Aplicación para analizar datos productivos en la industria farmacéutica y recomendar modelos de machine learning. Permite cargar datos, validarlos, transformarlos, entrenar y comparar modelos, recomendar el mejor y generar reportes completos. Arquitectura modular, multipágina, con integración a Snowflake y logging centralizado.
+
+---
+
+## Tabla de Historias de Usuario Implementadas y Planificadas
+
+| HU   | Descripción breve                                                        | Criterios de aceptación principales                | Archivos/módulos clave                  |
+|------|--------------------------------------------------------------------------|---------------------------------------------------|-----------------------------------------|
+| HU1  | Carga de datos desde CSV o Snowflake                                     | Importar, validar y almacenar datasets             | src/datos/cargador.py, pages/Datos/01_Cargar_Datos.py |
+| HU2  | Configuración del problema y variables                                   | Selección de variable objetivo y predictores       | src/datos/cargador.py, pages/Datos/02_Configurar_Datos.py |
+| HU3  | Validación automática de tipos, fechas y unidades                        | Detectar y sugerir correcciones                    | src/datos/validador.py, pages/Datos/03_Validar_Datos.py |
+| HU4  | Transformación y limpieza de datos                                       | Aplicar transformaciones, gestionar duplicados     | src/datos/transformador.py, src/datos/limpiador.py |
+| HU5  | Análisis de calidad y resumen de datos                                   | Estadísticas, visualización de calidad             | src/datos/analizador.py, pages/Datos/04_Analizar_Calidad.py |
+| HU6  | Entrenamiento automático de modelos ML                                   | Benchmarking, manejo de errores, persistencia      | src/modelos/entrenador.py, pages/Machine Learning/04_Entrenar_Modelos.py |
+| HU7  | Evaluación detallada de modelos                                          | Métricas, validación cruzada, comparación          | src/modelos/evaluador.py, pages/Machine Learning/05_Evaluar_Modelos.py |
+| HU8  | Recomendación automática del mejor modelo                                | Selección por criterios, justificación             | src/modelos/recomendador.py, pages/Machine Learning/06_Recomendar_Modelo.py |
+| HU9  | Visualización avanzada y comparación de modelos                          | Matriz confusión, ROC, PR, residuos, exportación   | src/modelos/visualizador.py, pages/Machine Learning/05_Evaluar_Modelos.py |
+| HU10 | Validación estricta Model-View, separación lógica negocio/UI             | Lógica de negocio solo en modelos, UI solo presentación | src/modelos/evaluador.py, src/ui/, pages/ |
+| HU11 | Curvas de aprendizaje y validación cruzada avanzada                      | Curvas learning, análisis de overfitting           | src/modelos/evaluador.py, src/modelos/visualizador.py |
+| HU12 | Interpretabilidad avanzada (SHAP, importancia de variables)              | Explicaciones automáticas, visualización de importancia | src/modelos/explicador.py, src/modelos/visualizador.py |
+| HU13 | Generación y descarga de reportes completos (PDF)                        | Reporte PDF con resultados, gráficos y recomendaciones | src/reportes/generador.py, pages/Reportes/07_Reporte.py |
+| HU14 | Optimización automática de hiperparámetros                               | Búsqueda grid/bayesiana, comparación de resultados | src/modelos/entrenador.py, src/modelos/configurador.py |
+| HU15 | Integración MLOps y versionado de modelos                                | Seguimiento de experimentos, versionado, auditoría | src/modelos/modelo_serializer.py, src/audit/logger.py |
+
+---
+
+## Historias de Usuario: Narrativa y Cumplimiento
+
+### HU1: Carga de datos desde CSV o Snowflake
+
+Permite importar datasets desde archivos locales o Snowflake, validando estructura y almacenando en la base local. Implementado en `src/datos/cargador.py` y `pages/Datos/01_Cargar_Datos.py`.
+
+### HU2: Configuración del problema y variables
+
+Selección guiada de variable objetivo y predictores, con validación de tipos y sugerencias. Implementado en `src/datos/cargador.py` y `pages/Datos/02_Configurar_Datos.py`.
+
+### HU3: Validación automática de tipos, fechas y unidades
+
+Detección de inconsistencias y sugerencia de correcciones, con feedback visual. Implementado en `src/datos/validador.py` y `pages/Datos/03_Validar_Datos.py`.
+
+### HU4: Transformación y limpieza de datos
+
+Aplicación de transformaciones, gestión de duplicados y valores nulos, con historial de cambios. Implementado en `src/datos/transformador.py`, `src/datos/limpiador.py`.
+
+### HU5: Análisis de calidad y resumen de datos
+
+Estadísticas descriptivas, visualización de calidad y alertas de problemas. Implementado en `src/datos/analizador.py` y `pages/Datos/04_Analizar_Calidad.py`.
+
+### HU6: Entrenamiento automático de modelos ML
+
+Benchmarking de múltiples modelos, manejo de errores y persistencia de resultados. Implementado en `src/modelos/entrenador.py` y `pages/Machine Learning/04_Entrenar_Modelos.py`.
+
+### HU7: Evaluación detallada de modelos
+
+Métricas completas, validación cruzada y comparación visual. Implementado en `src/modelos/evaluador.py` y `pages/Machine Learning/05_Evaluar_Modelos.py`.
+
+### HU8: Recomendación automática del mejor modelo
+
+Selección basada en criterios personalizables, justificación y persistencia. Implementado en `src/modelos/recomendador.py` y `pages/Machine Learning/06_Recomendar_Modelo.py`.
+
+### HU9: Visualización avanzada y comparación de modelos
+
+Matriz de confusión, curvas ROC/PR, gráficos de residuos y exportación de visualizaciones. Implementado en `src/modelos/visualizador.py` y `pages/Machine Learning/05_Evaluar_Modelos.py`.
+
+### HU10: Validación estricta Model-View
+
+Refactorización para separar lógica de negocio (modelos, cálculos, visualizaciones) en `src/modelos/` y presentación/interacción en `src/ui/` y `pages/`. Validado en `docs-private/registros/HU11_Fase3_Validacion_Model_View_Implementacion.md`.
+
+### HU11: Curvas de aprendizaje y validación cruzada avanzada
+
+Implementación de curvas de aprendizaje y análisis de overfitting/underfitting. Planificado en `src/modelos/evaluador.py`, `src/modelos/visualizador.py`.
+
+### HU12: Interpretabilidad avanzada
+
+Explicaciones automáticas de modelos (SHAP, importancia de variables), visualización y análisis de dependencias. Planificado en `src/modelos/explicador.py`, `src/modelos/visualizador.py`.
+
+### HU13: Reportes completos en PDF
+
+Generación de reportes PDF con resultados, gráficos y recomendaciones, guardado automático en Snowflake y descarga desde la UI. Implementado en `src/reportes/generador.py` y `pages/Reportes/07_Reporte.py`.
+
+### HU14: Optimización automática de hiperparámetros
+
+Búsqueda de hiperparámetros (grid/bayesiana), comparación de resultados y selección óptima. Planificado en `src/modelos/entrenador.py`, `src/modelos/configurador.py`.
+
+### HU15: Integración MLOps y versionado de modelos
+
+Seguimiento de experimentos, versionado de modelos y auditoría avanzada. Planificado en `src/modelos/modelo_serializer.py`, `src/audit/logger.py`.
+
+---
+
+## Instalación y Ejecución Local
+
+1. **Clonar el repositorio**
+
+   ```bash
+   git clone [URL del repositorio]
+   cd analitica-farma
+   ```
+
+2. **Crear y activar entorno virtual (recomendado)**
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate  # En Windows
+   # source .venv/bin/activate  # En Linux/Mac
+   ```
+
+3. **Instalar dependencias**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configurar variables de entorno**
+   - Solicita acceso a un usuario habilitado. El acceso está restringido y la aplicación no cuenta con gestión de usuarios; solo quienes tengan permisos podrán operar la herramienta.
+   - Las variables de entorno requeridas para la conexión a Snowflake serán proporcionadas por el administrador del sistema.
+
+5. **Ejecutar la aplicación**
+
+   ```bash
+   streamlit run app.py
+   ```
+
+6. **Acceso**
+   - Abrir el navegador en la URL que indica Streamlit (por defecto <http://localhost:8501>)
+
+---
+
+## Notas de Arquitectura y Estructura
+
+- Arquitectura modular, separación estricta Model-View: lógica de negocio en `src/modelos/`, UI en `src/ui/` y `pages/`.
+- Integración exclusiva con Snowflake para almacenamiento y auditoría en producción. Toda la persistencia y auditoría se realiza en Snowflake.
+- El acceso está restringido a usuarios habilitados; aún no existe gestión de usuarios en la aplicación.
+
+---
 
 ## Estructura del Proyecto
 
@@ -8,7 +142,6 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 ├── app.py                  # Punto de entrada principal de la app Streamlit y la navegación multipágina
 ├── requirements.txt        # Dependencias del proyecto
 ├── README.md               # Este archivo
-├── analitica_farma.db      # Base de datos SQLite local
 ├── pages/                  # Páginas multipágina de Streamlit (cada funcionalidad principal)
 │   ├── 00_Logueo.py        # Página de inicio de sesión
 │   ├── Datos/
@@ -34,7 +167,6 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 │   │   ├── limpiador.py    # Limpieza de datos
 │   │   ├── transformador.py # Transformaciones de datos
 │   │   ├── validador.py    # Validación de datos
-│   │   └── mock_db.py      # Base de datos mock para desarrollo
 │   ├── modelos/            # Entrenamiento, evaluación y recomendación de modelos ML
 │   │   ├── configurador.py # Configuración de parámetros de modelos
 │   │   ├── entrenador.py   # Entrenamiento y benchmarking de modelos
@@ -58,7 +190,6 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 - Las páginas en `pages/` están organizadas en subcarpetas por dominio funcional: Datos, Machine Learning y Reportes.
 - El archivo `app.py` implementa la navegación multipágina, la barra lateral con información del dataset y una lista de comprobación del progreso.
 - El código fuente en `src/` está organizado por dominio con un enfoque modular de tipo MVC.
-- La base de datos SQLite (`analitica_farma.db`) almacena los datos, metadatos, usuarios y registros de auditoría.
 - Nuevos módulos `state` y `ui` para gestión centralizada del estado y componentes de interfaz reutilizables.
 
 ## app.py
@@ -116,766 +247,418 @@ La aplicación implementa un flujo de trabajo guiado para el análisis de datos:
 
 Cada paso está representado por una página separada, y el progreso se visualiza en la barra lateral mediante una lista de comprobación dinámica.
 
-## Flujo de Machine Learning
+---
 
-La aplicación implementa un enfoque integral para el entrenamiento, evaluación y recomendación de modelos de machine learning a través de tres módulos principales:
+## Descripción Detallada de Pantallas y Componentes
 
-### 1. Entrenamiento de Modelos (Benchmarking)
+A continuación se describe el objetivo, funcionamiento y aspectos técnicos clave de cada pantalla principal de la aplicación, incluyendo el uso de librerías, funciones y el manejo de auditoría, datos y sesión.
 
-El módulo de entrenamiento (`entrenador.py`) implementa un proceso de benchmarking automático que:
+### 00_Logueo.py
 
-- **Detecta automáticamente** el tipo de problema (clasificación o regresión) basado en la variable objetivo
-- **Prepara los datos** realizando división en conjuntos de entrenamiento/prueba y aplicando las transformaciones necesarias (escalado, codificación de etiquetas)
-- **Ejecuta múltiples modelos** de forma paralela según el tipo de problema:
-  - Para clasificación: LogisticRegression, DecisionTree, RandomForest, GradientBoosting, SVC, KNeighbors, GaussianNB, AdaBoost
-  - Para regresión: LinearRegression, Ridge, Lasso, ElasticNet, DecisionTree, RandomForest, GradientBoosting, SVR, KNeighbors, AdaBoost
-- **Maneja errores individualmente** para cada modelo, permitiendo que el benchmarking continúe incluso si algunos modelos fallan
-- **Calcula métricas relevantes** según el tipo de problema:
-  - Clasificación: accuracy, precision, recall, F1-score, validación cruzada
-  - Regresión: R², MSE, RMSE, MAE, validación cruzada
-- **Ordena los modelos** según su rendimiento y guarda los resultados en la base de datos
-- **Mantiene un registro de auditoría** de las operaciones realizadas
+**Objetivo:**
 
-La interfaz de usuario en `04_Entrenar_Modelos.py` proporciona:
+- Permitir el acceso seguro a la aplicación mediante autenticación corporativa (SSO o usuario habilitado).
 
-- Selección de la variable objetivo y predictores
-- Control de variables temporales y fechas para evitar problemas en el entrenamientovo
-- Detección automática del tipo de problema con opción de cambio manual
-- Visualización de la distribución de clases/valores
-- Ajuste de parámetros avanzados (tamaño del conjunto de prueba)
-- Ejecución del benchmarking con barra de progreso detallada
-- Visualización de resultados comparativos con métricas clave
-- Identificación del mejor modelo encontrado
-- Navegación a las siguientes etapas del proceso
+**Qué hace y cómo lo hace:**
 
-### 2. Evaluación Detallada de Modelos
+- Presenta un formulario de login.
+- Valida credenciales contra el sistema de autenticación (Snowflake o sistema externo).
+- Al autenticar, inicializa el estado de sesión (`SessionManager`).
+- Registra el evento de login en los logs de auditoría (`logger.py`).
 
-El módulo de evaluación (`evaluador.py`) permite:
+**Paquetes y funciones:**
 
-- **Analizar en detalle** los modelos entrenados en el benchmarking
-- **Cargar benchmarkings anteriores** guardados en la base de datos
-- **Visualizar métricas detalladas** para cada modelo
-- **Comparar el rendimiento** entre diferentes modelos con gráficos
-- **Generar curvas de aprendizaje** para detectar overfitting/underfitting (implementación futura)
+- `streamlit` para UI.
+- `src/seguridad/autenticador.py` para validación de usuario.
+- `src/state/session_manager.py` para manejo de sesión.
+- `src/audit/logger.py` para registro de auditoría.
 
-La interfaz de usuario en `05_Evaluar_Modelos.py` ofrece:
+---
 
-- Selección del modelo a evaluar
-- Visualización detallada de métricas por tipo de problema
-- Análisis de validación cruzada
-- Gráficos comparativos de métricas
-- Carga de benchmarkings anteriores por ID
+### 01_Cargar_Datos.py
 
-### 3. Recomendación de Modelos
+**Objetivo:**
 
-El módulo de recomendación (`recomendador.py`) proporciona:
+- Permitir la carga de datos productivos desde archivos CSV o Snowflake.
 
-- **Criterios personalizables** para la selección del mejor modelo
-  - Clasificación: accuracy, F1-score, precision, recall
-  - Regresión: R², RMSE, MAE, MSE
-- **Justificación detallada** de la recomendación realizada
-- **Comparación visual** entre todos los modelos según el criterio seleccionado
-- **Persistencia de la selección** del usuario en la base de datos
-- **Registro de auditoría** de las decisiones tomadas
+**Qué hace y cómo lo hace:**
 
-La interfaz de usuario en `06_Recomendar_Modelo.py` incluye:
+- Permite seleccionar y cargar archivos locales o importar desde Snowflake.
+- Valida la estructura y formato de los datos usando `cargador.py` y `validador.py`.
+- Almacena los datos en memoria y/o en Snowflake.
+- Registra la operación en los logs de auditoría.
 
-- Selección del criterio de recomendación
-- Visualización del modelo recomendado con sus métricas
-- Justificación de la recomendación según el criterio
-- Comparación con otros modelos disponibles
-- Opción para aceptar la recomendación o seleccionar otro modelo
-- Comentarios sobre la selección realizada
+**Paquetes y funciones:**
 
-## Sistema de Validación de Datos
+- `pandas` para manipulación de datos.
+- `snowflake-connector-python` para acceso a Snowflake.
+- `src/datos/cargador.py` para carga y validación inicial.
+- `src/audit/logger.py` para auditoría.
 
-La aplicación implementa un robusto sistema de validación de datos para asegurar la calidad y consistencia de los datos antes de su análisis. Este sistema se encarga de detectar y corregir diversos problemas que podrían afectar el rendimiento de los modelos de machine learning.
+---
 
-### Arquitectura del Sistema de Validación
+### 02_Validar_Datos.py
 
-El sistema de validación está organizado en tres capas principales:
+**Objetivo:**
 
-1. **Módulos de validación** (`src/datos/validador.py`):
-   - Contiene algoritmos especializados para detectar problemas en los datos
-   - Implementa validadores independientes para tipos de datos, fechas y unidades
-   - Utiliza heurísticas avanzadas para identificar inconsistencias sutiles
+- Validar automáticamente tipos de datos, formatos de fecha y unidades.
 
-2. **Módulos de corrección** (`src/datos/transformador.py` y `src/datos/limpiador.py`):
-   - Proporciona funciones para corregir los problemas detectados
-   - Implementa algoritmos de conversión entre diferentes tipos y formatos
-   - Ofrece herramientas para la gestión de duplicados
+**Qué hace y cómo lo hace:**
 
-3. **Interfaz de usuario** (`pages/Datos/03_Validar_Datos.py`):
-   - Presenta los resultados de la validación de forma clara y procesable
-   - Permite al usuario seleccionar qué correcciones aplicar
-   - Proporciona retroalimentación visual sobre el estado de los datos
+- Ejecuta validaciones automáticas sobre el dataset cargado.
+- Utiliza heurísticas y expresiones regulares para detectar problemas.
+- Presenta resultados y sugerencias de corrección al usuario.
+- Registra los resultados y acciones en el log de auditoría.
 
-### Validaciones Implementadas
+**Paquetes y funciones:**
 
-#### 1. Validación de Tipos de Datos (`validar_tipos_datos`)
+- `pandas`, `re`, `datetime` para validaciones.
+- `src/datos/validador.py` para lógica de validación.
+- `src/audit/logger.py` para registro de validaciones.
 
-Este validador detecta inconsistencias en los tipos de datos de las columnas:
+---
 
-- **Detección de variables categóricas codificadas como numéricas**
-  - Identifica columnas numéricas con pocos valores únicos
-  - Sugiere la conversión a tipo categórico cuando es apropiado
+### 03_Analizar_Calidad.py
 
-- **Identificación de columnas de texto que contienen valores numéricos**
-  - Analiza el contenido de columnas de texto para detectar patrones numéricos
-  - Recomienda conversión a tipo numérico cuando todos los valores son números
+**Objetivo:**
 
-- **Reconocimiento de fechas almacenadas como texto**
-  - Utiliza expresiones regulares y múltiples formatos para detectar fechas
-  - Sugiere la conversión a tipo datetime para análisis temporal
+- Analizar la calidad de los datos y mostrar estadísticas descriptivas.
 
-#### 2. Validación de Formatos de Fecha (`validar_fechas`)
+**Qué hace y cómo lo hace:**
 
-Este validador se especializa en columnas temporales:
+- Calcula métricas de calidad (nulos, duplicados, outliers).
+- Genera visualizaciones de calidad y alertas.
+- Permite exportar reportes de calidad.
+- Registra el análisis en los logs de auditoría.
 
-- **Detección automática de columnas que podrían contener fechas**
-  - Identifica columnas por nombre (fecha, date, time, etc.)
-  - Analiza el contenido mediante patrones y heurísticas
+**Paquetes y funciones:**
 
-- **Identificación de formatos de fecha inconsistentes**
-  - Detecta cuando una misma columna contiene múltiples formatos (DD/MM/YYYY, MM/DD/YYYY, etc.)
-  - Recomienda la estandarización a un formato común (preferentemente ISO 8601)
+- `pandas`, `matplotlib`, `seaborn` para análisis y visualización.
+- `src/datos/analizador.py` para lógica de análisis.
+- `src/audit/logger.py` para auditoría.
 
-- **Verificación de información de zona horaria**
-  - Comprueba si las columnas datetime tienen información de zona horaria
-  - Sugiere agregar información de zona horaria para análisis temporales precisos
+---
 
-#### 3. Validación de Unidades de Medida (`validar_unidades`)
+### 04_Configurad_Datos.py
 
-Este validador identifica inconsistencias en unidades de magnitudes físicas:
+**Objetivo:**
 
-- **Detección de columnas que podrían contener unidades de medida**
-  - Identifica columnas por nombre (temperatura, peso, volumen, etc.)
-  - Analiza rangos de valores para inferir posibles unidades
+- Configurar el tipo de problema, variable objetivo y predictores.
 
-- **Identificación de posibles mezclas de unidades**
-  - Detecta valores atípicos que podrían indicar un cambio de unidad
-  - Sugiere la conversión a una unidad estándar
+**Qué hace y cómo lo hace:**
 
-- **Soporte para diferentes tipos de magnitudes**
-  - Temperatura (Celsius, Fahrenheit, Kelvin)
-  - Peso (kilogramos, gramos, libras, onzas)
-  - Longitud (metros, centímetros, pulgadas, pies)
-  - Volumen (litros, mililitros, galones)
+- Permite seleccionar la variable objetivo y las variables predictoras.
+- Valida la selección y sugiere configuraciones óptimas.
+- Actualiza el estado de sesión con la configuración.
+- Registra la configuración en el log de auditoría.
 
-### Detección y Gestión de Duplicados
+**Paquetes y funciones:**
 
-El sistema también incorpora herramientas avanzadas para la detección y gestión de duplicados:
+- `streamlit` para UI.
+- `src/datos/cargador.py` para obtención de variables.
+- `src/state/session_manager.py` para guardar configuración.
+- `src/audit/logger.py` para registro.
 
-1. **Detección personalizable** (`detectar_duplicados`):
-   - Permite seleccionar las columnas clave para identificar duplicados
-   - Genera estadísticas detalladas sobre la cantidad y distribución de duplicados
-   - Identifica grupos de registros duplicados para análisis detallado
+---
 
-2. **Opciones de corrección**:
-   - **Eliminación selectiva** (`eliminar_duplicados`): Permite conservar la primera ocurrencia, la última, o eliminar todas
-   - **Fusión inteligente** (`fusionar_duplicados`): Combina registros duplicados mediante diferentes estrategias por columna:
-     - Para columnas numéricas: media, suma, mínimo, máximo, mediana
-     - Para columnas categóricas: primer valor, último valor, valor más frecuente
+### 05_Entrenar_Modelos.py
 
-3. **Feedback visual**:
-   - Previsualización de resultados antes de aplicar cambios
-   - Estadísticas comparativas pre/post corrección
-   - Historial detallado de correcciones aplicadas
+**Objetivo:**
 
-### Flujo de Trabajo de Validación
+- Entrenar y comparar múltiples modelos de machine learning.
 
-El proceso de validación sigue estos pasos:
+**Qué hace y cómo lo hace:**
 
-1. **Detección automática**:
+- Ejecuta benchmarking automático de modelos (clasificación/regresión).
+- Utiliza scikit-learn y LazyPredict para entrenamiento y comparación.
+- Maneja errores y persistencia de resultados en Snowflake.
+- Registra el proceso y resultados en el log de auditoría.
 
-   ```python
-   Cargar datos → Ejecutar validaciones → Presentar resultados
-   ```
+**Paquetes y funciones:**
 
-2. **Selección de correcciones**:
+- `scikit-learn`, `lazypredict`, `pandas` para ML.
+- `src/modelos/entrenador.py` para lógica de entrenamiento.
+- `src/audit/logger.py` para auditoría.
+- `src/state/session_manager.py` para estado de modelos.
 
-   ```python
-   Revisar problemas → Seleccionar correcciones → Configurar parámetros
-   ```
+---
 
-3. **Aplicación de cambios**:
+### 06_Evaluar_Modelos.py
 
-   ```python
-   Previsualizar cambios → Aplicar correcciones → Registrar historial
-   ```
+**Objetivo:**
 
-4. **Gestión de duplicados** (opcional):
-
-   ```python
-   Seleccionar columnas clave → Detectar duplicados → Eliminar o fusionar
-   ```
-
-### Beneficios del Sistema de Validación
-
-- **Detección proactiva**: Identifica problemas antes de que afecten al análisis
-- **Corrección guiada**: Asiste al usuario en la aplicación de las correcciones adecuadas
-- **Flexibilidad**: Permite personalizar las validaciones según las necesidades específicas
-- **Trazabilidad**: Mantiene un historial detallado de todas las correcciones aplicadas
-- **Robustez**: Manejo de errores para evitar pérdida de datos durante las transformaciones
-
-### Librerías Utilizadas en la Validación
-
-- **pandas**: Para manipulación eficiente de datos y detección de tipos
-- **re (expresiones regulares)**: Para la identificación de patrones en fechas y unidades
-- **datetime**: Para validación y estandarización de formatos de fecha
-- **streamlit**: Para la interfaz de usuario interactiva
-- **logging**: Para el registro detallado de operaciones y auditoría
-
-## Mejoras Recientes (Junio 2025)
-
-Se ha implementado la Historia de Usuario 9 (HU9) "Evaluar múltiples modelos de ML para encontrar el más preciso", que incluye:
-
-1. **Benchmarking automático** de múltiples modelos con manejo robusto de errores
-   - Cada modelo se ejecuta de forma independiente para que el fallo de uno no afecte al resto
-   - Detección automática del tipo de problema (clasificación/regresión)
-   - Selección automática del conjunto apropiado de modelos según el tipo de problema
-
-2. **Persistencia mejorada** de resultados del benchmarking
-   - Guardado completo de resultados en la base de datos SQLite
-   - Recuperación de benchmarkings anteriores para comparación
-   - Almacenamiento de modelos entrenados y conjuntos de datos de prueba para evaluación posterior
-
-3. **Experiencia de usuario optimizada**
-   - Barra de progreso detallada durante el benchmarking
-   - Visualización comparativa de resultados con gráficos interactivos
-   - Sistema de caché inteligente para evitar re-entrenamiento innecesario
-   - Control manual para forzar un nuevo entrenamiento cuando sea necesario
-
-4. **Visualizaciones avanzadas de modelos** (HU10 - Comparación visual avanzada)
-   - Matrices de confusión interactivas con normalización personalizable
-   - Curvas ROC y Precision-Recall para clasificación
-   - Gráficos de residuos y análisis de distribuciones para regresión
-   - Comparación visual directa entre múltiples modelos
-   - Interpretaciones automáticas de las visualizaciones
-   - Exportación de gráficos en formato PNG para reportes
-
-5. **Integración con el sistema de auditoría**
-   - Registro detallado de operaciones en la tabla de auditoría
-   - Trazabilidad completa del proceso de entrenamiento y evaluación
-   - Captura de errores y excepciones para facilitar la depuración
-   - Posibilidad de cargar benchmarkings anteriores por ID
-   - Registro detallado en el log de auditoría
-
-6. **Visualización comparativa** de modelos
-   - Tabla con todas las métricas relevantes por modelo
-   - Gráficos de barras comparativos para las métricas clave
-   - Código de colores para facilitar la interpretación visual
-
-7. **Navegación mejorada** entre etapas del workflow
-   - Integración fluida entre entrenamiento, evaluación y recomendación
-   - Conservación del estado entre páginas mediante SessionManager
-   - Botones de navegación directa a las siguientes etapas del proceso
-
-8. **Experiencia de usuario robusta**
-   - Mensajes informativos en cada etapa del proceso
-   - Manejo de excepciones y visualización amigable de errores
-   - Barras de progreso detalladas durante el entrenamiento
-
-9. **Soporte para conjuntos de datos desbalanceados**
-   - Incorporación de métricas específicas (F1, precision, recall)
-   - Visualización de la distribución de clases
-   - Incorporación de imbalanced-learn como dependencia
-
-## Gestión del estado
-
-La aplicación utiliza un gestor centralizado de estado (`SessionManager`) que:
-
-- Mantiene el estado de sesión entre páginas
-- Registra el progreso del usuario en el flujo de trabajo
-- Almacena y proporciona información del dataset y la configuración
-- Ofrece métodos para restablecer el análisis cuando sea necesario
-
-## Objetivo de los archivos principales
-
-| Archivo/Carpeta                        | Descripción                                                                                |
-|----------------------------------------|--------------------------------------------------------------------------------------------|
-| app.py                                 | Punto de entrada principal de la app Streamlit. Inicializa la navegación multipágina.      |
-| pages/00_Logueo.py                     | Página de inicio de sesión de la aplicación.                                               |
-| pages/Datos/01_Cargar_Datos.py         | Página para cargar datos desde CSV o seleccionar datasets existentes.                      |
-| pages/Datos/02_Configurar_Datos.py     | Página para configurar el tipo de problema, variable objetivo y predictores.               |
-| pages/Datos/03_Validar_Datos.py        | Página para validar tipos de datos, formatos de fecha y unidades.                          |
-| pages/Machine Learning/04_Entrenar_Modelos.py | Página para ejecutar benchmarking automático de múltiples modelos de ML.            |
-| pages/Machine Learning/05_Evaluar_Modelos.py  | Página para visualizar y comparar en detalle los modelos entrenados.               |
-| pages/Machine Learning/06_Recomendar_Modelo.py | Página que recomienda el mejor modelo según criterios seleccionables.             |
-| pages/Reportes/07_Reporte.py           | Página para generar y descargar reportes en PDF o CSV.                                    |
-| pages/Reportes/08_Dashboard.py         | Dashboard unificado con resumen de datasets, modelos, reportes y transformaciones.        |
-| src/audit/logger.py                    | Registro de logs de auditoría: carga, transformación, entrenamiento, exportación, etc.    |
-| src/config/workflow_steps.json         | Configuración de los pasos del workflow y su estado para la barra lateral.                |
-| src/datos/cargador.py                  | Funciones para cargar datos desde CSV, validar y almacenar en SQLite.                     |
-| src/datos/formateador.py               | Funciones para estandarizar formatos de fecha y unidades de medida.                       |
-| src/datos/limpiador.py                 | Funciones para detectar y limpiar duplicados, valores nulos y problemas de calidad.       |
-| src/datos/transformador.py             | Funciones para aplicar transformaciones y revertirlas si es necesario.                    |
-| src/datos/validador.py                 | Funciones para validar tipos de datos, formatos y unidades.                               |
-| src/datos/mock_db.py                   | Inicializa la base de datos SQLite y crea información de ejemplo.                         |
-| src/modelos/configurador.py            | Configuración de parámetros para los modelos de machine learning.                         |
-| src/modelos/entrenador.py              | Lógica para entrenar múltiples modelos de ML y realizar benchmarking automático.          |
-| src/modelos/evaluador.py               | Funciones para evaluar modelos y visualizar métricas detalladas.                          |
-| src/modelos/modelo_serializer.py       | Sistema de serialización/deserialización de modelos ML para almacenamiento y recuperación.|
-| src/modelos/diagnostico_modelo.py      | Diagnóstico sobre disponibilidad y estado de objetos modelo en el benchmarking.           |
-| src/modelos/recomendador.py            | Algoritmo para recomendar el mejor modelo según criterios seleccionables.                 |
-| src/modelos/visualizador.py            | Generación de visualizaciones avanzadas para evaluación de modelos.                       |
-| src/reportes/generador.py              | Generación de reportes PDF/CSV con resumen de análisis, transformaciones y modelos.       |
-| src/seguridad/autenticador.py          | Control de roles y validación de permisos de usuario.                                     |
-| src/state/session_manager.py           | Gestión centralizada del estado de la aplicación y progreso del workflow.                 |
-| src/ui/sidebar.py                      | Componentes para la barra lateral y visualización del progreso.                           |
-
-## Uso de la base de datos SQLite
-
-La aplicación utiliza SQLite como sistema de almacenamiento de datos principal. Esto proporciona:
-
-1. **Almacenamiento estructurado**: Tablas relacionales para datasets, transformaciones, modelos y auditoría.
-2. **Persistencia de datos**: Los datos cargados y procesados se mantienen entre sesiones.
-3. **Auditoría completa**: Registro de todas las operaciones realizadas por los usuarios.
-4. **Facilidad de despliegue**: No requiere configuración de servidores de base de datos adicionales.
-
-### Tablas principales relacionadas con Machine Learning
-
-La aplicación utiliza varias tablas en la base de datos SQLite para almacenar información relacionada con el proceso de machine learning:
-
-1. **benchmarking_modelos**: Almacena los resultados del benchmarking de modelos
-   - `id`: Identificador único del benchmarking
-   - `id_usuario`: Usuario que ejecutó el benchmarking
-   - `tipo_problema`: Tipo de problema (clasificación/regresión)
-   - `variable_objetivo`: Nombre de la variable objetivo
-   - `cantidad_modelos_exitosos`: Número de modelos entrenados exitosamente
-   - `cantidad_modelos_fallidos`: Número de modelos que fallaron
-   - `mejor_modelo`: Nombre del mejor modelo según la métrica principal
-   - `resultados_completos`: JSON con los resultados detallados de todos los modelos
-   - `fecha_ejecucion`: Fecha y hora de ejecución
-
-2. **modelos_seleccionados**: Registra las selecciones de modelos realizadas por los usuarios
-   - `id`: Identificador único de la selección
-   - `id_usuario`: Usuario que realizó la selección
-   - `id_benchmarking`: Referencia al benchmarking
-   - `nombre_modelo`: Nombre del modelo seleccionado
-   - `comentarios`: Comentarios sobre la selección
-   - `fecha_seleccion`: Fecha y hora de la selección
-
-3. **auditoria**: Registro de todas las acciones realizadas
-   - `id`: Identificador único del registro
-   - `id_usuario`: Usuario que realizó la acción
-   - `accion`: Tipo de acción (BENCHMARKING_MODELOS, EVALUACION_DETALLADA, SELECCION_MODELO, etc.)
-   - `descripcion`: Descripción detallada de la acción
-   - `fecha`: Fecha y hora de la acción
-
-### Configuración y uso de la base de datos
-
-1. **Creación de la base de datos**
-
-   Ejecuta el script de inicialización para crear la base de datos SQLite y las tablas necesarias:
-
-   ```bash
-   python src/datos/mock_db.py
-   ```
-
-   Esto generará un archivo `analitica_farma.db` en el directorio raíz.
-
-2. **Uso en la aplicación**
-
-   La aplicación utiliza la base de datos para:
-   - Almacenar datasets cargados desde CSV
-   - Guardar configuraciones de análisis
-   - Registrar metadatos de modelos entrenados
-   - Mantener un registro de auditoría
-
-3. **Ejemplo de conexión a la base de datos en Python**
-
-```python
-import sqlite3
-conn = sqlite3.connect("analitica_farma.db")
-cursor = conn.cursor()
-cursor.execute("SELECT * FROM datasets")
-resultados = cursor.fetchall()
-conn.close()
+- Evaluar en detalle los modelos entrenados y comparar métricas.
+
+**Qué hace y cómo lo hace:**
+
+- Permite seleccionar modelos entrenados y visualizar métricas avanzadas.
+- Genera gráficos comparativos y tablas de métricas.
+- Permite cargar evaluaciones anteriores desde Snowflake.
+- Registra la evaluación en el log de auditoría.
+
+**Paquetes y funciones:**
+
+- `scikit-learn`, `matplotlib`, `seaborn` para métricas y visualización.
+- `src/modelos/evaluador.py` para lógica de evaluación.
+- `src/audit/logger.py` para auditoría.
+
+---
+
+### 07_Validación_Cruzada.py
+
+**Objetivo:**
+
+- Realizar validación cruzada y análisis de curvas de aprendizaje.
+
+**Qué hace y cómo lo hace:**
+
+- Ejecuta validación cruzada sobre los modelos seleccionados.
+- Genera curvas de aprendizaje y análisis de overfitting/underfitting.
+- Presenta resultados visuales y recomendaciones.
+- Registra el proceso en el log de auditoría.
+
+**Paquetes y funciones:**
+
+- `scikit-learn` para validación cruzada.
+- `matplotlib`, `seaborn` para visualización.
+- `src/modelos/validacion_cruzada.py`, `src/modelos/visualizador.py` para lógica y gráficos.
+- `src/audit/logger.py` para auditoría.
+
+---
+
+### 08_Recomendar_Modelo.py
+
+**Objetivo:**
+
+- Recomendar automáticamente el mejor modelo según criterios definidos.
+
+**Qué hace y cómo lo hace:**
+
+- Evalúa los modelos entrenados según criterios seleccionados (accuracy, F1, R2, etc.).
+- Presenta la recomendación y justificación al usuario.
+- Permite guardar la selección en Snowflake y registrar la decisión.
+
+**Paquetes y funciones:**
+
+- `src/modelos/recomendador.py` para lógica de recomendación.
+- `src/audit/logger.py` para registro de la recomendación.
+- `src/state/session_manager.py` para persistencia de la selección.
+
+---
+
+### 09_Explicar_Modelo.py
+
+**Objetivo:**
+
+- Proveer interpretabilidad avanzada de los modelos (SHAP, importancia de variables).
+
+**Qué hace y cómo lo hace:**
+
+- Calcula e interpreta la importancia de variables y valores SHAP.
+- Genera visualizaciones explicativas.
+- Presenta análisis de dependencias y justificaciones.
+- Registra el análisis en el log de auditoría.
+
+**Paquetes y funciones:**
+
+- `shap`, `matplotlib`, `seaborn` para interpretabilidad y visualización.
+- `src/modelos/explicador.py`, `src/modelos/visualizador.py` para lógica y gráficos.
+- `src/audit/logger.py` para auditoría.
+
+---
+
+### 10_Reportes.py
+
+**Objetivo:**
+
+- Generar y descargar reportes completos en PDF o CSV.
+
+**Qué hace y cómo lo hace:**
+
+- Compila resultados, gráficos y recomendaciones en un reporte estructurado.
+- Permite exportar el reporte y almacenarlo en Snowflake.
+- Registra la generación y descarga en el log de auditoría.
+
+**Paquetes y funciones:**
+
+- `reportlab`, `pandas` para generación de PDF/CSV.
+- `src/reportes/generador.py` para lógica de reporte.
+- `src/audit/logger.py` para auditoría.
+
+---
+
+## Manejo de Auditoría, Datos y Sesión
+
+- **Auditoría:** Todas las acciones relevantes (login, carga, validación, entrenamiento, selección, reporte) se registran mediante `src/audit/logger.py` en Snowflake, incluyendo usuario, acción, timestamp y detalles.
+- **Almacenamiento/Lectura de Datos:** Toda la persistencia y consulta de datos se realiza mediante el conector oficial de Snowflake (`snowflake-connector-python`). No se utiliza almacenamiento local ni SQLite.
+- **Gestión de Sesión:** El estado de usuario, configuración, progreso y selección de modelos se maneja centralizadamente con `src/state/session_manager.py`, asegurando persistencia y consistencia entre pantallas.
+
+---
+
+## Estructura de la Base de Datos y Uso en la Aplicación
+
+La aplicación utiliza la base de datos `ANALITICA_FARMA` en Snowflake, organizada en dos esquemas principales:
+
+- **PUBLIC:** Contiene las tablas de control, auditoría, usuarios, modelos, reportes y metadatos.
+- **DATASETS:** Almacena las tablas físicas de datos cargados por los usuarios, una por cada dataset.
+
+### Tablas principales del esquema PUBLIC
+
+- **USUARIOS**: Registro de usuarios habilitados, roles y credenciales (hash).
+- **SESIONES**: Control de sesiones activas, inicio/fin y estado, asociadas a usuarios.
+- **AUDITORIA**: Registro detallado de todas las acciones relevantes (login, carga, entrenamiento, reportes, etc.), con referencia a usuario, sesión, entidad y detalles.
+- **DATASETS**: Metadatos de cada dataset cargado (nombre, descripción, creador, fecha, referencia a la tabla física en DATASETS).
+- **MODELOS**: Información de cada modelo entrenado (nombre, tipo, usuario, metadatos, modelo serializado, dataset asociado).
+- **BENCHMARKING_MODELOS**: Resultados de benchmarking de modelos, métricas, mejor modelo, usuario y sesión.
+- **CONFIGURACIONES_MODELO**: Configuraciones de variables objetivo, predictoras y parámetros de entrenamiento por usuario y sesión.
+- **REPORTES**: Reportes generados (PDF/CSV), con referencias a modelo, dataset y usuario.
+
+### Esquema DATASETS
+
+- Cada vez que un usuario carga un nuevo dataset, se crea una tabla física en el esquema `DATASETS` con el nombre del dataset. Estas tablas almacenan los datos originales y transformados, y son referenciadas desde la tabla `DATASETS` del esquema PUBLIC.
+
+### Relaciones y flujo de uso
+
+- **Usuarios y sesiones:** Toda acción está asociada a un usuario y una sesión activa.
+- **Carga de datos:** Al cargar un dataset, se crea un registro en `DATASETS` (PUBLIC) y una tabla física en `DATASETS` (esquema), vinculadas por `ID_DATASET`.
+- **Entrenamiento y modelos:** Los modelos entrenados se registran en `MODELOS`, vinculados al usuario, dataset y sesión. Los resultados de benchmarking se almacenan en `BENCHMARKING_MODELOS`.
+- **Configuraciones:** Cada configuración de entrenamiento se guarda en `CONFIGURACIONES_MODELO`.
+- **Reportes:** Los reportes generados se almacenan en `REPORTES`, vinculados a modelo, dataset y usuario.
+- **Auditoría:** Todas las acciones relevantes quedan registradas en `AUDITORIA`, permitiendo trazabilidad completa.
+
+### Resumen de uso por la aplicación
+
+- La aplicación consulta y actualiza estas tablas para gestionar usuarios, sesiones, datasets, modelos, configuraciones, reportes y auditoría.
+- El acceso y las operaciones están controlados por roles y permisos definidos en la tabla `USUARIOS`.
+- El historial de acciones y resultados permite trazabilidad, auditoría y recuperación de información en cualquier etapa del flujo de trabajo.
+
+### Diagrama Entidad-Relación (DER) de la Base de Datos
+
+A continuación se presenta el diagrama entidad-relación (DER) que representa la estructura y relaciones principales de la base de datos `ANALITICA_FARMA` utilizada por la aplicación. Este DER resume las tablas clave, sus campos principales y las relaciones entre ellas.
+
+#### DER textual
+
+- **USUARIOS** (ID_USUARIO, NOMBRE, ROL, HASH_CREDENCIAL)
+  - 1:N con **SESIONES**
+  - 1:N con **AUDITORIA**
+  - 1:N con **MODELOS**
+  - 1:N con **REPORTES**
+- **SESIONES** (ID_SESION, ID_USUARIO, INICIO, FIN, ESTADO)
+  - N:1 con **USUARIOS**
+  - 1:N con **AUDITORIA**
+  - 1:N con **MODELOS**
+  - 1:N con **BENCHMARKING_MODELOS**
+  - 1:N con **CONFIGURACIONES_MODELO**
+- **AUDITORIA** (ID_AUDITORIA, ID_USUARIO, ID_SESION, ACCION, ENTIDAD, FECHA, DETALLES)
+  - N:1 con **USUARIOS**
+  - N:1 con **SESIONES**
+- **DATASETS** (ID_DATASET, NOMBRE, DESCRIPCION, CREADOR, FECHA_CREACION, NOMBRE_TABLA_FISICA)
+  - 1:N con **MODELOS**
+  - 1:N con **REPORTES**
+- **MODELOS** (ID_MODELO, NOMBRE, TIPO, ID_USUARIO, ID_DATASET, METADATOS, MODELO_SERIALIZADO)
+  - N:1 con **USUARIOS**
+  - N:1 con **DATASETS**
+  - 1:N con **BENCHMARKING_MODELOS**
+  - 1:N con **REPORTES**
+- **BENCHMARKING_MODELOS** (ID_BENCHMARK, ID_MODELO, ID_SESION, METRICAS, MEJOR_MODELO)
+  - N:1 con **MODELOS**
+  - N:1 con **SESIONES**
+- **CONFIGURACIONES_MODELO** (ID_CONFIG, ID_SESION, VARIABLES_OBJETIVO, VARIABLES_PREDICTORAS, PARAMETROS)
+  - N:1 con **SESIONES**
+- **REPORTES** (ID_REPORTE, ID_MODELO, ID_DATASET, ID_USUARIO, FECHA, TIPO, RUTA)
+  - N:1 con **MODELOS**
+  - N:1 con **DATASETS**
+  - N:1 con **USUARIOS**
+
+- **DATASETS** (esquema): Cada dataset cargado genera una tabla física con el nombre del dataset, referenciada desde la tabla `DATASETS` del esquema PUBLIC.
+
+#### DER en PlantUML
+
+```plantuml
+@startuml
+entity USUARIOS {
+  *ID_USUARIO : int
+  NOMBRE : string
+  ROL : string
+  HASH_CREDENCIAL : string
+}
+entity SESIONES {
+  *ID_SESION : int
+  ID_USUARIO : int
+  INICIO : datetime
+  FIN : datetime
+  ESTADO : string
+}
+entity AUDITORIA {
+  *ID_AUDITORIA : int
+  ID_USUARIO : int
+  ID_SESION : int
+  ACCION : string
+  ENTIDAD : string
+  FECHA : datetime
+  DETALLES : string
+}
+entity DATASETS {
+  *ID_DATASET : int
+  NOMBRE : string
+  DESCRIPCION : string
+  CREADOR : string
+  FECHA_CREACION : datetime
+  NOMBRE_TABLA_FISICA : string
+}
+entity MODELOS {
+  *ID_MODELO : int
+  NOMBRE : string
+  TIPO : string
+  ID_USUARIO : int
+  ID_DATASET : int
+  METADATOS : string
+  MODELO_SERIALIZADO : binary
+}
+entity BENCHMARKING_MODELOS {
+  *ID_BENCHMARK : int
+  ID_MODELO : int
+  ID_SESION : int
+  METRICAS : string
+  MEJOR_MODELO : bool
+}
+entity CONFIGURACIONES_MODELO {
+  *ID_CONFIG : int
+  ID_SESION : int
+  VARIABLES_OBJETIVO : string
+  VARIABLES_PREDICTORAS : string
+  PARAMETROS : string
+}
+entity REPORTES {
+  *ID_REPORTE : int
+  ID_MODELO : int
+  ID_DATASET : int
+  ID_USUARIO : int
+  FECHA : datetime
+  TIPO : string
+  RUTA : string
+}
+
+USUARIOS ||--o{ SESIONES : "1:N"
+USUARIOS ||--o{ AUDITORIA : "1:N"
+USUARIOS ||--o{ MODELOS : "1:N"
+USUARIOS ||--o{ REPORTES : "1:N"
+SESIONES ||--o{ AUDITORIA : "1:N"
+SESIONES ||--o{ MODELOS : "1:N"
+SESIONES ||--o{ BENCHMARKING_MODELOS : "1:N"
+SESIONES ||--o{ CONFIGURACIONES_MODELO : "1:N"
+DATASETS ||--o{ MODELOS : "1:N"
+DATASETS ||--o{ REPORTES : "1:N"
+MODELOS ||--o{ BENCHMARKING_MODELOS : "1:N"
+MODELOS ||--o{ REPORTES : "1:N"
+
+@enduml
 ```
 
-## Componentes UI reutilizables
+#### Diagrama Entidad-Relación de la base de datos ANALITICA_FARMA
 
-La aplicación utiliza componentes de UI reutilizables para mantener una experiencia de usuario consistente:
+![Diagrama Entidad-Relación de la base de datos ANALITICA_FARMA](https://img.plantuml.biz/plantuml/svg/dLRBRjim4BphAtGka1yeWY0hSXqpuKCbgRJeHN1JDN3Hse2j78ga_zvjJPbcg0YgR_BEY3ip95U-tlUhNV_qyqVHRVfr_wjiN0DM65S-5sNvJl0s5ChtvJrOjWHRNbxMTrTN16kZAeiHeH8g43AfBC4jsngS-sWiJn1hKYOmB-uDbIfZ98AcqW89Qvb5OC9eWhnGw3oeklXT398TEW8nIZuKnXIFcLaGT6mbjA1EIQC1MWZzgauFm4yMEz443HVUM057KTBS45Ctgi9vWe05poVfQYyuf2dIqcDbZXwaH1UBWv5N9hAyeePeXuC7Xpv670epJmL7nwoeKp-JsnkZ-GTpOySYGlUXGGMqDKumaopjeP81W0ZCzQiCHscYtSFlcMwzgCs8JTJUeWObwC7ylrU57YXr4tPKWFP56OII8of8yHbusZdVgRZap2Wgr6ofmDu9VTE-ocNaG6SJOsR764AMPLjRKqbKoJuUCg1oQwfR38CZeWmETs9GtE8dGTaPDqWU9Ir0Ii5Jai9ROmCZ7L_e6kc1w2qpgfP8wuzj-osoPc9wCQCNugQny9U3BdGwE-7p0ekeevUH2-QDXTHE8dIm33FlyzpJPh4srf_Cyb0u_-hb4syYlVogf-34POf2u-sSjdpyrBwyN5nidu_VCIBtwsxJPOJZHuKOZqJOhJBACAY9yR3hSZoST88fy5stoHXn1zxiaKw4kE3txk6fp-bl770IkDryMpy-KOSYM1zrkkiUr_kUM96KULtjjm_hoCZSPeJSRCwOCfkp9xn6VZ5epXLkTslAEn9oXO5H3E_aZ2-hVLTSTvklz8Vk3m00)
 
-1. **Barra lateral**: Muestra información del dataset actual y el progreso del workflow
-2. **Indicadores de progreso**: Visualización del estado de cada etapa del análisis
-3. **Componentes de validación**: Formateo y validación unificada de datos
+[Ver en PlantUML Online](https://img.plantuml.biz/plantuml/svg/dLRBRjim4BphAtGka1yeWY0hSXqpuKCbgRJeHN1JDN3Hse2j78ga_zvjJPbcg0YgR_BEY3ip95U-tlUhNV_qyqVHRVfr_wjiN0DM65S-5sNvJl0s5ChtvJrOjWHRNbxMTrTN16kZAeiHeH8g43AfBC4jsngS-sWiJn1hKYOmB-uDbIfZ98AcqW89Qvb5OC9eWhnGw3oeklXT398TEW8nIZuKnXIFcLaGT6mbjA1EIQC1MWZzgauFm4yMEz443HVUM057KTBS45Ctgi9vWe05poVfQYyuf2dIqcDbZXwaH1UBWv5N9hAyeePeXuC7Xpv670epJmL7nwoeKp-JsnkZ-GTpOySYGlUXGGMqDKumaopjeP81W0ZCzQiCHscYtSFlcMwzgCs8JTJUeWObwC7ylrU57YXr4tPKWFP56OII8of8yHbusZdVgRZap2Wgr6ofmDu9VTE-ocNaG6SJOsR764AMPLjRKqbKoJuUCg1oQwfR38CZeWmETs9GtE8dGTaPDqWU9Ir0Ii5Jai9ROmCZ7L_e6kc1w2qpgfP8wuzj-osoPc9wCQCNugQny9U3BdGwE-7p0ekeevUH2-QDXTHE8dIm33FlyzpJPh4srf_Cyb0u_-hb4syYlVogf-34POf2u-sSjdpyrBwyN5nidu_VCIBtwsxJPOJZHuKOZqJOhJBACAY9yR3hSZoST88fy5stoHXn1zxiaKw4kE3txk6fp-bl770IkDryMpy-KOSYM1zrkkiUr_kUM96KULtjjm_hoCZSPeJSRCwOCfkp9xn6VZ5epXLkTslAEn9oXO5H3E_aZ2-hVLTSTvklz8Vk3m00)
 
-Estos componentes se implementan en el módulo `src/ui/` y se utilizan en todas las páginas de la aplicación.
-
-## Gestión de estado centralizada
-
-El módulo `src/state/session_manager.py` proporciona:
-
-1. **Inicialización del estado**: Configura todas las variables de estado necesarias
-2. **Acceso a la información del dataset**: Métodos para obtener metadatos del dataset actual
-3. **Seguimiento del progreso**: Actualización y consulta del estado de las etapas del workflow
-4. **Reinicio de análisis**: Funcionalidad para reiniciar un análisis completo
-
-## Instalación y ejecución
-
-1. **Clonar el repositorio**
-
-   ```bash
-   git clone [URL del repositorio]
-   cd analitica-farma
-   ```
-
-2. **Instalar dependencias**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Inicializar la base de datos (primer uso)**
-
-   ```bash
-   python src/datos/mock_db.py
-   ```
-
-4. **Ejecutar la aplicación**
-
-   ```bash
-   streamlit run app.py
-   ```
-
-## Sistema de Serialización de Modelos
-
-La aplicación incorpora un sistema robusto para la serialización y deserialización de modelos de machine learning, garantizando que los objetos modelo estén disponibles para visualizaciones avanzadas y predicciones en tiempo real.
-
-### Arquitectura del Sistema de Serialización
-
-El sistema utiliza un enfoque en capas para manejar la serialización:
-
-1. **Nivel de modelo individual**:  
-   - `serializar_modelo()` y `deserializar_modelo()` convierten modelos individuales entre su forma de objeto y representación serializada
-   - Utiliza joblib para la serialización eficiente de objetos scikit-learn
-   - Codifica en base64 para almacenamiento seguro en JSON/SQLite
-
-2. **Nivel de benchmarking completo**:
-   - `serializar_modelos_benchmarking()` procesa todos los modelos en un resultado de benchmarking
-   - `deserializar_modelos_benchmarking()` reconstruye todos los modelos a partir de resultados guardados
-   - Mantiene la estructura de datos original para compatibilidad con el resto de la aplicación
-
-3. **Nivel de diagnóstico**:
-   - `diagnosticar_objetos_modelo()` verifica la disponibilidad de objetos modelo
-   - Proporciona información de depuración sobre el estado de serialización
-
-### Proceso de Serialización
-
-El flujo de trabajo de serialización sigue estos pasos:
-
-1. **Entrenamiento**:
-
-   ```python
-   Entrenar modelos → Serializar objetos → Guardar en SQLite
-   ```
-
-2. **Carga de Benchmarking**:
-
-   ```python
-   Cargar de SQLite → Deserializar objetos → Restaurar modelos completos
-   ```
-
-3. **Evaluación y Visualización**:
-
-   ```python
-   Usar objetos modelo para → Predicciones → Visualizaciones avanzadas
-   ```
-
-### Ventajas técnicas
-
-- **Persistencia completa**: Los modelos entrenados se conservan incluso después de cerrar la aplicación
-- **Ahorro de recursos**: No es necesario reentrenar modelos para evaluaciones posteriores
-- **Experiencia de usuario mejorada**: Acceso a visualizaciones avanzadas en cualquier momento
-- **Compatibilidad**: Funciona con todos los modelos de scikit-learn y sus extensiones
-
-### Tecnologías utilizadas
-
-- **joblib**: Serialización optimizada para objetos científicos de Python, especialmente eficiente con arrays NumPy
-- **base64**: Codificación segura para almacenamiento en bases de datos y formatos JSON
-- **io.BytesIO**: Buffers en memoria para operaciones eficientes de serialización sin archivos temporales
-- **JSON**: Formato intermedio para almacenamiento estructurado en SQLite
-
-## Librerías y Métodos de Machine Learning
-
-La aplicación utiliza una variedad de librerías y métodos para implementar el flujo completo de análisis de datos y machine learning, cada una con un propósito específico dentro del pipeline:
-
-### Librerías principales
-
-#### 1. Scikit-learn (sklearn)
-
-Es la columna vertebral de nuestras funcionalidades de machine learning, proporcionando:
-
-- **Preprocesamiento de datos**:
-  - `train_test_split`: División de datos en conjuntos de entrenamiento y prueba
-  - `StandardScaler`: Estandarización de variables numéricas
-  - `LabelEncoder`: Codificación de variables categóricas
-
-- **Modelos de clasificación**:
-  - `LogisticRegression`: Modelo lineal para clasificación binaria y multiclase
-  - `DecisionTreeClassifier`: Árboles de decisión para problemas no lineales
-  - `RandomForestClassifier`: Conjunto de árboles para mayor robustez
-  - `GradientBoostingClassifier`: Boosting de gradiente para mejorar la precisión
-  - `SVC`: Máquinas de vectores de soporte para problemas complejos
-  - `KNeighborsClassifier`: Clasificación basada en vecinos cercanos
-  - `GaussianNB`: Clasificador bayesiano para probabilidades condicionadas
-  - `AdaBoostClassifier`: Boosting adaptativo para mejorar modelos débiles
-
-- **Modelos de regresión**:
-  - `LinearRegression`: Regresión lineal simple y múltiple
-  - `Ridge`, `Lasso`, `ElasticNet`: Regresiones regularizadas para evitar sobreajuste
-  - `DecisionTreeRegressor`: Árboles de decisión para regresión no lineal
-  - `RandomForestRegressor`: Ensamble de árboles para regresión robusta
-  - `GradientBoostingRegressor`: Boosting de gradiente para regresión
-  - `SVR`: Regresión con vectores de soporte
-  - `KNeighborsRegressor`: Regresión basada en vecinos cercanos
-
-- **Validación y evaluación**:
-  - `cross_val_score`: Validación cruzada para evaluación robusta
-  - Métricas de clasificación: `accuracy_score`, `precision_score`, `recall_score`, `f1_score`
-  - Métricas de regresión: `r2_score`, `mean_squared_error`, `mean_absolute_error`
-
-#### 2. Pandas y NumPy
-
-- `pandas`: Manipulación y análisis de datos estructurados
-  - DataFrames para almacenamiento eficiente y consultas
-  - Funciones de limpieza y transformación de datos
-  - Métodos para manejo de valores nulos y duplicados
-
-- `numpy`: Computación numérica eficiente
-  - Arrays multidimensionales y operaciones vectorizadas
-  - Funciones matemáticas y estadísticas
-  - Generación de números aleatorios controlados por semilla
-
-#### 3. Visualización
-
-- `matplotlib` y `seaborn`: Generación de gráficos estadísticos
-  - Histogramas para visualizar distribuciones
-  - Gráficos de barras para comparar métricas
-  - Matrices de confusión para evaluar clasificación
-  - Curvas ROC y PR para evaluación detallada
-
-- `plotly`: Visualizaciones interactivas
-  - Gráficos dinámicos para exploración de datos
-  - Dashboards interactivos para la interpretación de resultados
-
-#### 4. Extensiones específicas
-
-- `imbalanced-learn`: Manejo de datasets desbalanceados
-  - Técnicas de sobremuestreo (SMOTE, ADASYN)
-  - Técnicas de submuestreo (RandomUnderSampler)
-  - Combinaciones híbridas (SMOTETomek, SMOTEENN)
-
-- `shap`: Interpretabilidad de modelos
-  - Valores SHAP para explicar predicciones individuales
-  - Gráficos de importancia de características
-  - Análisis de dependencia para entender relaciones
-
-- `joblib` y `base64`: Serialización robusta de modelos
-  - Almacenamiento eficiente de modelos scikit-learn
-  - Codificación segura para base de datos
-  - Compresión integrada para optimizar espacio
-
-- Modelos avanzados:
-  - `lightgbm`: Implementación eficiente de gradient boosting
-  - `xgboost`: Implementación escalable de boosting de gradiente extremo
-  - `catboost`: Modelo optimizado para variables categóricas
-
-### Métodos clave implementados
-
-#### 1. Benchmarking automático (`entrenador.py`)
-
-- **`ejecutar_benchmarking`**: Método principal que:
-  1. Detecta automáticamente el tipo de problema (clasificación/regresión)
-  2. Preprocesa los datos (división, escalado, codificación)
-  3. Entrena múltiples modelos en paralelo con manejo de errores
-  4. Calcula métricas relevantes para cada modelo
-  5. Ordena los resultados según el rendimiento
-
-- **`guardar_resultados_benchmarking`**: Persistencia de resultados que:
-  1. Serializa las métricas y parámetros de cada modelo
-  2. Almacena en la base de datos SQLite con timestamp
-  3. Registra en el log de auditoría
-
-- **`obtener_benchmarking_por_id`**: Recupera resultados anteriores para:
-  1. Comparación entre diferentes ejecuciones
-  2. Análisis de rendimiento a lo largo del tiempo
-  3. Evaluación detallada de modelos específicos
-
-#### 2. Sistema de Serialización de Modelos (`modelo_serializer.py`)
-
-- **`serializar_modelo`**: Convierte modelos de scikit-learn a formato serializable
-  1. Utiliza joblib para serializar eficientemente el objeto modelo completo
-  2. Codifica el resultado en base64 para almacenamiento seguro en JSON/SQLite
-  3. Comprime los datos para optimizar el espacio de almacenamiento
-
-- **`deserializar_modelo`**: Reconstruye objetos modelo a partir de representaciones serializadas
-  1. Decodifica la cadena base64 a su representación binaria
-  2. Utiliza joblib para cargar el objeto modelo completo con sus parámetros
-  3. Recupera todas las funcionalidades del modelo original (predict, predict_proba, etc.)
-
-- **`serializar_modelos_benchmarking`**: Prepara los resultados completos del benchmarking
-  1. Procesa recursivamente todos los modelos en los resultados
-  2. Marca los modelos que tienen objetos serializados para seguimiento
-  3. Elimina objetos no serializables manteniendo la estructura de datos
-
-- **`deserializar_modelos_benchmarking`**: Restaura los objetos modelo en los resultados
-  1. Reconstruye automáticamente todos los modelos serializados
-  2. Mantiene la estructura original de datos para compatibilidad
-  3. Optimiza la memoria eliminando representaciones serializadas redundantes
-
-#### 3. Diagnóstico de Modelos (`diagnostico_modelo.py`)
-
-- **`diagnosticar_objetos_modelo`**: Verifica la disponibilidad de objetos modelo
-  1. Analiza los resultados del benchmarking para detectar modelos sin objetos
-  2. Proporciona diagnóstico detallado del estado de cada modelo
-  3. Genera recomendaciones sobre cómo resolver problemas de serialización
-
-#### 4. Visualización avanzada de modelos (`visualizador.py`)
-
-- **`generar_matriz_confusion`**: Crea matrices de confusión personalizables
-- **`generar_curva_roc`**: Visualiza curvas ROC para problemas binarios y multiclase
-- **`generar_curva_precision_recall`**: Grafica curvas de precisión-recall
-- **`generar_grafico_residuos`**: Analiza residuos para modelos de regresión
-- **`comparar_distribuciones`**: Compara valores reales vs. predichos
-- **`comparar_modelos_roc`**: Contrasta rendimiento de múltiples modelos en un gráfico
-
-#### 2. Evaluación detallada (`evaluador.py`)
-
-- **`evaluar_modelo_detallado`**: Análisis profundo que:
-  1. Extrae métricas completas del modelo seleccionado
-  2. Genera visualizaciones específicas del tipo de problema
-  3. Analiza el rendimiento con validación cruzada
-
-- **`comparar_modelos`**: Comparación visual que:
-  1. Genera gráficos comparativos de métricas clave
-  2. Destaca fortalezas y debilidades de cada modelo
-  3. Facilita la toma de decisiones basada en datos
-
-#### 3. Recomendación inteligente (`recomendador.py`)
-
-- **`recomendar_mejor_modelo`**: Selección basada en criterios que:
-  1. Evalúa modelos según criterios personalizables
-  2. Proporciona justificación detallada de la recomendación
-  3. Sugiere el modelo óptimo para el problema específico
-
-- **`guardar_seleccion_modelo`**: Persistencia de decisiones que:
-  1. Registra la selección del usuario con comentarios
-  2. Mantiene un historial de selecciones para análisis
-  3. Facilita la auditoría y trazabilidad
-
-### Integración y flujo de datos
-
-El flujo de datos a través del pipeline de machine learning sigue estas etapas:
-
-1. **Carga y preparación**:
-   - Los datos se cargan desde CSV o Snowflake mediante `cargador.py`
-   - Se aplican transformaciones de limpieza con `limpiador.py`
-   - Se validan los tipos y formatos con `validador.py`
-
-2. **Modelado y evaluación**:
-   - Se ejecuta el benchmarking automático con `entrenador.py`
-   - Se analizan los resultados detalladamente con `evaluador.py`
-   - Se recomienda el mejor modelo con `recomendador.py`
-
-3. **Visualización y reporte**:
-   - Se generan visualizaciones comparativas con matplotlib/seaborn
-   - Se crean dashboards interactivos con plotly
-   - Se producen reportes estructurados con los hallazgos clave
-
-Cada componente está diseñado para funcionar de manera independiente pero integrada, siguiendo principios de modularidad y responsabilidad única.
-
-### Gestión de errores y robustez
-
-El sistema implementa varias estrategias para garantizar la robustez:
-
-1. **Manejo de excepciones específicas** para cada modelo en el benchmarking
-2. **Registro detallado** de errores y advertencias en el log de auditoría
-3. **Validación de datos** antes del entrenamiento para prevenir problemas
-4. **Mecanismos de fallback** en caso de fallo de componentes individuales
-5. **Persistencia transaccional** de resultados para evitar pérdida de información
-
-Esta arquitectura asegura que el sistema pueda manejar eficientemente diferentes tipos de datos, problemas y escenarios, proporcionando resultados confiables y explicables para la toma de decisiones industriales.
-
-## Visualizaciones Avanzadas de Modelos (HU10)
-
-La historia de usuario 10 implementa un sistema integral de visualizaciones avanzadas para la evaluación detallada de modelos de machine learning, permitiendo un análisis profundo del rendimiento mediante técnicas de visualización interactivas.
-
-### Características principales
-
-#### 1. Módulo de visualización centralizado (`visualizador.py`)
-
-Se ha implementado un módulo especializado en la generación de visualizaciones avanzadas que:
-
-- **Estandariza el estilo gráfico** en toda la aplicación
-- **Maneja errores robustamente** para evitar fallos en la interfaz
-- **Genera interpretaciones automáticas** de las visualizaciones
-- **Soporta exportación de gráficos** para reportes
-
-#### 2. Visualizaciones para modelos de clasificación
-
-Para problemas de clasificación, se implementan:
-
-- **Matrices de confusión interactivas**
-  - Opciones de normalización (por filas, columnas o total)
-  - Interpretación automática con análisis de clases problemáticas
-  - Identificación de patrones de confusión más comunes
-
-- **Curvas ROC y área bajo la curva (AUC)**
-  - Soporte para problemas binarios y multiclase
-  - Comparación visual entre diferentes modelos
-  - Interpretación automática del poder discriminativo
-
-- **Curvas Precision-Recall**
-  - Análisis detallado para conjuntos desbalanceados
-  - Evaluación de compromiso entre precisión y exhaustividad
-  - Personalización de puntos de corte
-
-#### 3. Visualizaciones para modelos de regresión
-
-Para problemas de regresión, se implementan:
-
-- **Gráficos de residuos multi-panel**
-  - Residuos vs. valores predichos
-  - Histograma de distribución de residuos
-  - QQ-plot para evaluar normalidad
-  - Predicciones vs. valores reales
-
-- **Comparación de distribuciones**
-  - Histogramas superpuestos de valores reales y predichos
-  - Estimaciones de densidad kernel (KDE)
-  - Análisis visual de sesgos y varianza
-
-#### 4. Comparación directa entre modelos
-
-La interfaz permite:
-
-- **Selección múltiple de modelos** para comparación directa
-- **Visualización conjunta de curvas ROC o predicciones**
-- **Tablas de métricas comparativas** con resaltado automático
-- **Análisis de fortalezas y debilidades** de cada modelo
-
-### Integración en la interfaz de usuario
-
-Las visualizaciones se integran en la página `05_Evaluar_Modelos.py` mediante:
-
-- **Sistema de pestañas** para organizar diferentes visualizaciones
-- **Selectores interactivos** para personalizar las visualizaciones
-- **Paneles informativos** con interpretaciones automáticas
-- **Botones de descarga** para exportar gráficos en formato PNG
-
-Esta implementación proporciona a los usuarios una herramienta poderosa para entender el comportamiento de los modelos más allá de las métricas numéricas, facilitando la toma de decisiones informadas sobre qué modelo seleccionar para su problema específico.
-
-## Próximos pasos
-
-Las próximas mejoras planificadas incluyen:
-
-1. **Implementación de curvas de aprendizaje** (HU11) para evaluar el comportamiento de los modelos con diferentes tamaños de datos de entrenamiento
-2. **Herramientas de interpretabilidad de modelos** (HU12) como importancia de características, SHAP values y dependencias parciales
-3. **Reportes automáticos de ML** (HU13) con explicaciones en lenguaje natural y visualizaciones clave
-4. **Optimización automática de hiperparámetros** (HU14) mediante búsqueda en grid y bayesiana
-5. **Integración con sistemas de MLOps** (HU15) para seguimiento de experimentos y versionado de modelos
-
-Estas funcionalidades completarán un ecosistema integral para el análisis de datos industriales y la aplicación efectiva de técnicas de machine learning en entornos de producción real.
+---

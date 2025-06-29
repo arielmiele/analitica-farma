@@ -1,0 +1,11 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python-envs.pythonProjects": [],
+    "chat.mcp.serverSampling": {
+        "analitica-farma/.vscode/mcp.json: snowflake": {
+            "allowedModels": [
+                "github.copilot-chat/gpt-4.1"
+            ]
+        }
+    }
+}

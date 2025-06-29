@@ -425,6 +425,7 @@ analitica_farma.db
 
 # Ignorar secretos y configuraciones locales de Streamlit
 .streamlit/secrets.toml
+.streamlit/
 # Ignorar archivos de base de datos y backups
 *.db
 *.sqlite
