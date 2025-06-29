@@ -11,11 +11,11 @@ import seaborn as sns
 from src.modelos.entrenador import ejecutar_benchmarking, obtener_ultimo_benchmarking
 from src.modelos.configurador import guardar_configuracion_modelo
 from src.state.session_manager import SessionManager
-from src.audit.logger import Logger
+from src.audit.logger import setup_logger, log_audit
 
 # Inicializar gestor de sesión y logger
 session = SessionManager()
-logger = Logger("Entrenar_Modelos")
+logger = setup_logger("Entrenar_Modelos")
 
 # Función con caché para ejecutar el benchmarking sin repetirse al recargar la página
 @st.cache_data(show_spinner=False, ttl=3600)  # Cache válida por 1 hora
@@ -33,7 +33,9 @@ def ejecutar_benchmarking_cached(X, y, tipo_problema, test_size, trigger_key=Non
     Returns:
         dict: Resultados del benchmarking
     """
-    return ejecutar_benchmarking(X, y, tipo_problema=tipo_problema, test_size=test_size)
+    usuario = SessionManager().obtener_estado("usuario_id", "sistema")
+    id_sesion = SessionManager().obtener_estado("id_sesion", "sin_sesion")
+    return ejecutar_benchmarking(X, y, tipo_problema=tipo_problema, test_size=test_size, usuario=usuario, id_sesion=id_sesion)
 
 def main():
     st.title("🤖 Evaluación de Modelos de Machine Learning")
@@ -55,7 +57,7 @@ def main():
                     st.write(f"**ID del último benchmarking:** {stats['ultimo_benchmarking_id']}")
             
             st.info("""
-            Nota sobre la caché: Streamlit guarda en caché los resultados del entrenamiento para evitar cálculos
+            Nota sobre la caché: Streamlit guarda en caché los resultados del entrenamiento para evitar cálulos
             repetidos al recargar la página. Si necesita forzar un nuevo entrenamiento, use el botón 
             "Forzar nuevo entrenamiento" que aparece debajo.
             """)
@@ -357,13 +359,21 @@ def main():
                     st.info(f"Columnas eliminadas: {', '.join(columnas_a_procesar)}")
             
             # Guardar la configuración en la base de datos y obtener su ID
-            guardar_configuracion_modelo(config)
+            guardar_configuracion_modelo(
+                config,
+                id_usuario=session.obtener_estado("usuario_id", "sistema"),
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                usuario=session.obtener_estado("usuario", "sistema")
+            )
             
             # Registrar en el log de auditoría
-            logger.log_evento(
+            log_audit(
+                session.obtener_estado("usuario_id", "sistema"),
                 "INICIAR_BENCHMARKING",
+                "Entrenar_Modelos",
+                var_objetivo,
                 f"Iniciando benchmarking de modelos para {var_objetivo}",
-                "Entrenar_Modelos"
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
             )
             
             # Iniciar barra de progreso
@@ -430,10 +440,13 @@ def main():
             st.success("✅ Evaluación de modelos completada con éxito. Vea los resultados a continuación.")
             
             # Registrar en el log de auditoría
-            logger.log_evento(
+            log_audit(
+                session.obtener_estado("usuario_id", "sistema"),
                 "BENCHMARKING_COMPLETADO",
+                "Entrenar_Modelos",
+                var_objetivo,
                 f"Benchmarking completado con {len(resultados['modelos_exitosos'])} modelos exitosos",
-                "Entrenar_Modelos"
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
             )
             
             # Mostrar resumen de resultados
@@ -441,11 +454,13 @@ def main():
             
         except Exception as e:
             st.error(f"❌ Error al ejecutar el benchmarking: {str(e)}")
-            logger.log_evento(
+            log_audit(
+                session.obtener_estado("usuario_id", "sistema"),
                 "ERROR_BENCHMARKING",
-                f"Error al ejecutar benchmarking: {str(e)}",
                 "Entrenar_Modelos",
-                tipo="error"
+                session.obtener_estado("variable_objetivo", "N/A"),
+                f"Error al ejecutar benchmarking: {str(e)}",
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
             )    # Cargar y mostrar resultados previos si existen
     elif session.obtener_estado("resultados_benchmarking"):
         # Mensaje informativo con marco más destacado

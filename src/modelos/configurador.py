@@ -2,102 +2,75 @@
 Módulo para gestionar la configuración de modelos de machine learning.
 """
 import json
-import sqlite3
-import os
-import logging
 from datetime import datetime
+from src.audit.logger import log_audit
+from src.snowflake.snowflake_conn import get_native_snowflake_connection
 
-# Obtener el logger
-logger = logging.getLogger("configurador")
-
-def guardar_configuracion_modelo(configuracion, id_usuario=1, db_path=None):
+def guardar_configuracion_modelo(configuracion, id_usuario, id_sesion, usuario):
     """
-    Guarda la configuración del modelo en la base de datos.
-    
+    Guarda la configuración del modelo en la base de datos Snowflake.
     Args:
-        configuracion (dict): Diccionario con la configuración del modelo
-        id_usuario (int): ID del usuario que realiza la acción
-        db_path (str): Ruta a la base de datos SQLite (por defecto, analitica_farma.db)
-    
+        configuracion (dict): Configuración del modelo
+        id_usuario (int): ID del usuario
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
     Returns:
         int: ID de la configuración guardada
     """
     conn = None
     try:
-        # Determinar la ruta de la base de datos
-        if db_path is None:
-            db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'analitica_farma.db')
-        
-        # Conectar a la base de datos
-        conn = sqlite3.connect(db_path)
+        conn = get_native_snowflake_connection()
         cursor = conn.cursor()
-        
-        # Verificar si existe la tabla de configuraciones
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS configuraciones_modelo (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_usuario INTEGER NOT NULL,
-                tipo_problema TEXT NOT NULL,
-                variable_objetivo TEXT NOT NULL,
-                variables_predictoras TEXT NOT NULL,
-                configuracion_completa TEXT NOT NULL,
-                fecha_creacion TIMESTAMP NOT NULL
-            )
-        """)
-        # Verificar si existe la tabla de auditoría
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS auditoria (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_usuario INTEGER NOT NULL,
-                accion TEXT NOT NULL,
-                descripcion TEXT,
-                fecha TIMESTAMP NOT NULL
-            )
-        """)
-        
-        # Preparar datos para inserción
+
+        # Sanitizar y preparar datos
+        tipo_problema = str(configuracion.get('tipo_problema', ''))
+        variable_objetivo = str(configuracion.get('variable_objetivo', ''))
         variables_predictoras_json = json.dumps(configuracion.get('variables_predictoras', []))
         configuracion_json = json.dumps(configuracion)
-        
+        fecha_creacion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         # Insertar la configuración
-        cursor.execute("""
-            INSERT INTO configuraciones_modelo (
-                id_usuario, tipo_problema, variable_objetivo, 
-                variables_predictoras, configuracion_completa, fecha_creacion
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (
+        insert_query = """
+            INSERT INTO CONFIGURACIONES_MODELO (
+                ID_USUARIO, TIPO_PROBLEMA, VARIABLE_OBJETIVO, 
+                VARIABLES_PREDICTORAS, CONFIGURACION_COMPLETA, FECHA_CREACION
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_query, (
             id_usuario,
-            configuracion.get('tipo_problema', ''),
-            configuracion.get('variable_objetivo', ''),
+            tipo_problema,
+            variable_objetivo,
             variables_predictoras_json,
             configuracion_json,
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            fecha_creacion
         ))
-        
-        # Obtener el ID de la configuración insertada
-        config_id = cursor.lastrowid
-        
-        # Registrar en la tabla de auditoría
-        cursor.execute("""
-            INSERT INTO auditoria (
-                id_usuario, accion, descripcion, fecha
-            ) VALUES (?, ?, ?, ?)
-        """, (
-            id_usuario,
-            "GUARDAR_CONFIGURACION",
-            f"Configuración de modelo guardada: {configuracion.get('tipo_problema')} - {configuracion.get('variable_objetivo')}",
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        ))
-        
-        # Confirmar cambios
+        # Obtener el ID de la configuración insertada (por usuario y timestamp)
+        cursor.execute(
+            "SELECT MAX(ID) FROM CONFIGURACIONES_MODELO WHERE ID_USUARIO = %s AND FECHA_CREACION = %s",
+            (id_usuario, fecha_creacion)
+        )
+        result = cursor.fetchone()
+        config_id = result[0] if result and result[0] is not None else None
+
+        log_audit(
+            usuario=usuario,
+            accion="INFO_GUARDAR_CONFIGURACION",
+            entidad="configurador",
+            id_entidad=str(config_id) if config_id else "N/A",
+            detalles=f"Configuración guardada en Snowflake con ID {config_id}",
+            id_sesion=id_sesion
+        )
         conn.commit()
-        
-        logger.info(f"Configuración guardada con ID {config_id}")
-        
         return config_id
-    
     except Exception as e:
-        logger.error(f"Error al guardar configuración: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_GUARDAR_CONFIGURACION",
+            entidad="configurador",
+            id_entidad="N/A",
+            detalles=f"Error al guardar configuración en Snowflake: {str(e)}",
+            id_sesion=id_sesion
+        )
         if conn:
             conn.rollback()
         raise
@@ -105,57 +78,46 @@ def guardar_configuracion_modelo(configuracion, id_usuario=1, db_path=None):
         if conn:
             conn.close()
 
-
-def obtener_configuracion_modelo(id_configuracion=None, id_usuario=None, db_path=None):
+def obtener_configuracion_modelo(id_sesion, usuario, id_configuracion=None, id_usuario=None):
     """
-    Obtiene una configuración de modelo guardada.
-    
+    Obtiene una configuración de modelo guardada desde Snowflake.
     Args:
-        id_configuracion (int): ID de la configuración a recuperar
-        id_usuario (int): ID del usuario para filtrar configuraciones
-        db_path (str): Ruta a la base de datos SQLite
-    
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
+        id_configuracion (int, opcional): ID de la configuración
+        id_usuario (int, opcional): ID del usuario
     Returns:
-        dict: Configuración del modelo o None si no se encuentra
+        dict or None: Configuración del modelo o None si no se encuentra
     """
     conn = None
     try:
-        # Determinar la ruta de la base de datos
-        if db_path is None:
-            db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'analitica_farma.db')
-        
-        # Conectar a la base de datos
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row  # Para acceder a columnas por nombre
+        conn = get_native_snowflake_connection()
         cursor = conn.cursor()
-        
         # Construir la consulta según los parámetros
-        query = "SELECT * FROM configuraciones_modelo WHERE 1=1"
+        query = "SELECT CONFIGURACION_COMPLETA FROM CONFIGURACIONES_MODELO WHERE 1=1"
         params = []
-        
         if id_configuracion:
-            query += " AND id = ?"
+            query += " AND ID = %s"
             params.append(id_configuracion)
-        
         if id_usuario:
-            query += " AND id_usuario = ?"
+            query += " AND ID_USUARIO = %s"
             params.append(id_usuario)
-        
-        query += " ORDER BY fecha_creacion DESC LIMIT 1"
-        
-        # Ejecutar la consulta
-        cursor.execute(query, params)
+        query += " ORDER BY FECHA_CREACION DESC LIMIT 1"
+        cursor.execute(query, tuple(params))
         resultado = cursor.fetchone()
-        
         if resultado:
-            # Convertir a diccionario
-            config = json.loads(resultado['configuracion_completa'])
+            config = json.loads(resultado[0])
             return config
-        
         return None
-    
     except Exception as e:
-        logger.error(f"Error al obtener configuración: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_OBTENER_CONFIGURACION",
+            entidad="configurador",
+            id_entidad=str(id_configuracion) if id_configuracion else "N/A",
+            detalles=f"Error al obtener configuración de Snowflake: {str(e)}",
+            id_sesion=id_sesion
+        )
         return None
     finally:
         if conn:

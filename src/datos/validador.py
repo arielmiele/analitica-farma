@@ -2,14 +2,11 @@
 Módulo para validar la estructura de datos y variables objetivo.
 """
 import pandas as pd
-import logging
 import re
 from datetime import datetime
+from src.audit.logger import log_audit
 
-# Obtener el logger
-logger = logging.getLogger("validador")
-
-def validar_variable_objetivo(df, variable_objetivo, tipo_problema):
+def validar_variable_objetivo(df, variable_objetivo, tipo_problema, id_sesion, usuario):
     """
     Valida que la variable objetivo sea adecuada para el tipo de problema.
     
@@ -17,6 +14,8 @@ def validar_variable_objetivo(df, variable_objetivo, tipo_problema):
         df (pd.DataFrame): DataFrame con los datos
         variable_objetivo (str): Nombre de la columna objetivo
         tipo_problema (str): 'regresion' o 'clasificacion'
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
     
     Returns:
         tuple: (bool, str) indicando si es válida y un mensaje
@@ -33,7 +32,14 @@ def validar_variable_objetivo(df, variable_objetivo, tipo_problema):
             if porcentaje > 20:
                 return False, f"La variable objetivo tiene {nulos} valores nulos ({porcentaje:.1f}%). Se recomienda seleccionar otra variable o imputar los valores faltantes."
             else:
-                logger.warning(f"La variable objetivo tiene {nulos} valores nulos ({porcentaje:.1f}%)")
+                log_audit(
+                    usuario=usuario,
+                    accion="ADVERTENCIA_VARIABLE_OBJETIVO_NULOS",
+                    entidad="validador",
+                    id_entidad=variable_objetivo,
+                    detalles=f"La variable objetivo tiene {nulos} valores nulos ({porcentaje:.1f}%)",
+                    id_sesion=id_sesion
+                )
         
         # Validaciones específicas según el tipo de problema
         if tipo_problema == "regresion":
@@ -65,17 +71,26 @@ def validar_variable_objetivo(df, variable_objetivo, tipo_problema):
         return True, "Variable objetivo válida"
         
     except Exception as e:
-        logger.error(f"Error al validar variable objetivo: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_VALIDAR_VARIABLE_OBJETIVO",
+            entidad="validador",
+            id_entidad="N/A",
+            detalles=f"Error al validar variable objetivo: {str(e)}",
+            id_sesion=id_sesion
+        )
         return False, f"Error al validar la variable objetivo: {str(e)}"
 
 
-def validar_estructura(df, configuracion):
+def validar_estructura(df, configuracion, id_sesion, usuario):
     """
     Valida la estructura completa del dataset para el problema especificado.
     
     Args:
         df (pd.DataFrame): DataFrame con los datos
         configuracion (dict): Diccionario con la configuración del modelo
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
     
     Returns:
         tuple: (bool, str) indicando si es válida y un mensaje
@@ -90,7 +105,7 @@ def validar_estructura(df, configuracion):
             return False, "La configuración está incompleta"
         
         # Validar variable objetivo
-        objetivo_valida, mensaje = validar_variable_objetivo(df, variable_objetivo, tipo_problema)
+        objetivo_valida, mensaje = validar_variable_objetivo(df, variable_objetivo, tipo_problema, id_sesion, usuario)
         if not objetivo_valida:
             return False, mensaje
         
@@ -112,16 +127,25 @@ def validar_estructura(df, configuracion):
         return True, "La estructura de datos es válida para el problema especificado"
     
     except Exception as e:
-        logger.error(f"Error al validar estructura: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_VALIDAR_ESTRUCTURA",
+            entidad="validador",
+            id_entidad="N/A",
+            detalles=f"Error al validar estructura: {str(e)}",
+            id_sesion=id_sesion
+        )
         return False, f"Error al validar la estructura: {str(e)}"
 
 
-def validar_tipos_datos(df):
+def validar_tipos_datos(df, id_sesion, usuario):
     """
     Valida los tipos de datos de cada columna y detecta inconsistencias.
     
     Args:
         df (pd.DataFrame): DataFrame con los datos
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         
     Returns:
         list: Lista de diccionarios con errores detectados
@@ -185,13 +209,25 @@ def validar_tipos_datos(df):
                         'opciones': ['Mantener como object', 'Convertir a fecha']
                     })
         
-        # Registrar resultados
-        logger.info(f"Validación de tipos de datos completada: {len(errores)} problemas encontrados")
+        log_audit(
+            usuario=usuario,
+            accion="INFO_VALIDACION_TIPOS_DATOS",
+            entidad="validador",
+            id_entidad="N/A",
+            detalles=f"Validación de tipos de datos completada: {len(errores)} problemas encontrados",
+            id_sesion=id_sesion
+        )
         return errores
         
     except Exception as e:
-        logger.error(f"Error al validar tipos de datos: {str(e)}")
-        # Agregar el error a la lista
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_VALIDAR_TIPOS_DATOS",
+            entidad="validador",
+            id_entidad="N/A",
+            detalles=f"Error al validar tipos de datos: {str(e)}",
+            id_sesion=id_sesion
+        )
         errores.append({
             'columna': 'general',
             'mensaje': f"Error al validar tipos de datos: {str(e)}",
@@ -244,13 +280,15 @@ def es_posible_fecha(texto):
         return False
 
 
-def validar_fechas(df):
+def validar_fechas(df, id_sesion, usuario):
     """
     Valida columnas de fecha para asegurar que sean útiles en ML, no solo formato.
     
     Args:
         df (pd.DataFrame): DataFrame con los datos
-        
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
+    
     Returns:
         list: Lista de advertencias/errores relevantes para ML
     """
@@ -338,11 +376,25 @@ def validar_fechas(df):
                     'sugerencia': "Utilice la función de transformación para crear variables derivadas de la fecha."
                 })
         
-        logger.info(f"Validación avanzada de fechas para ML completada: {len(errores)} advertencias/errores.")
+        log_audit(
+            usuario=usuario,
+            accion="INFO_VALIDACION_FECHAS",
+            entidad="validador",
+            id_entidad="N/A",
+            detalles=f"Validación avanzada de fechas para ML completada: {len(errores)} advertencias/errores.",
+            id_sesion=id_sesion
+        )
         return errores
         
     except Exception as e:
-        logger.error(f"Error al validar fechas: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_VALIDAR_FECHAS",
+            entidad="validador",
+            id_entidad="N/A",
+            detalles=f"Error al validar fechas: {str(e)}",
+            id_sesion=id_sesion
+        )
         errores.append({
             'columna': 'general',
             'mensaje': f"Error al validar fechas: {str(e)}",

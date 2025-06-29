@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
+from src.audit.logger import setup_logger, log_audit
+
+logger = setup_logger("analisis_calidad")
+usuario_id = st.session_state.get("usuario_id", "sistema")
 
 st.title("📊 3. Análisis Exploratorio de Datos (EDA)")
 st.markdown("""
@@ -11,10 +15,26 @@ Esta página realiza un análisis exploratorio del dataset cargado y validado. E
 # Verificar datos cargados y validados
 if 'df' not in st.session_state or st.session_state.df is None:
     st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset primero en la página 'Cargar Datos'.")
+    log_audit(
+        usuario=usuario_id,
+        accion="EDA_NO_DATOS",
+        entidad="analisis_calidad",
+        id_entidad="",
+        detalles="Intento de acceso a EDA sin datos cargados.",
+        id_sesion=st.session_state.get("id_sesion", "sin_sesion")
+    )
     if st.button("Ir a Cargar Datos"):
         st.switch_page("pages/Datos/01_Cargar_Datos.py")
 elif 'validacion_completa' not in st.session_state or not st.session_state.validacion_completa:
     st.warning("⚠️ Los datos no han sido validados. Por favor, valida los datos primero.")
+    log_audit(
+        usuario=usuario_id,
+        accion="EDA_NO_VALIDADO",
+        entidad="analisis_calidad",
+        id_entidad="",
+        detalles="Intento de acceso a EDA sin validación completa.",
+        id_sesion=st.session_state.get("id_sesion", "sin_sesion")
+    )
     if st.button("Ir a Validar Datos"):
         st.switch_page("pages/Datos/02_Validar_Datos.py")
 else:
@@ -22,6 +42,14 @@ else:
     st.write(f"### Dataset: {st.session_state.filename}")
     st.write(f"Dimensiones: {df.shape[0]} filas × {df.shape[1]} columnas")
     st.write("---")
+    log_audit(
+        usuario=usuario_id,
+        accion="EDA_INICIO",
+        entidad="analisis_calidad",
+        id_entidad=st.session_state.filename,
+        detalles="Inicio de análisis exploratorio de datos.",
+        id_sesion=st.session_state.get("id_sesion", "sin_sesion")
+    )
 
     # === SECCIÓN 1: Vista general ===
     st.header("1. Vista general")
@@ -122,9 +150,9 @@ else:
         with col_num:
             st.caption(f"Variables numéricas disponibles: {len([c for c in all_cols if c in num_cols and c != target_col])}")
             if 'explicativas_num' in st.session_state:
-                explicativas_num_default = []#c for c in st.session_state.explicativas_num if c in num_cols and c != target_col]
+                explicativas_num_default = []
             else:
-                explicativas_num_default = []#c for c in num_cols if c != target_col]
+                explicativas_num_default = []
             explicativas_num = st.multiselect(
                 "Variables numéricas",
                 [c for c in num_cols if c != target_col],
@@ -135,9 +163,9 @@ else:
         with col_cat:
             st.caption(f"Variables categóricas disponibles: {len([c for c in all_cols if c in cat_cols and c != target_col])}")
             if 'explicativas_cat' in st.session_state:
-                explicativas_cat_default = []#c for c in st.session_state.explicativas_cat if c in cat_cols and c != target_col]
+                explicativas_cat_default = []
             else:
-                explicativas_cat_default = []#c for c in cat_cols if c != target_col]
+                explicativas_cat_default = []
             explicativas_cat = st.multiselect(
                 "Variables categóricas",
                 [c for c in cat_cols if c != target_col],
@@ -145,6 +173,7 @@ else:
                 key="explicativas_cat_selector"
             )
             st.session_state.explicativas_cat = explicativas_cat
+    
     # Unir ambas selecciones para el análisis
     explicativas_cols = st.session_state.explicativas_num + st.session_state.explicativas_cat
     st.session_state.explicativas_cols = explicativas_cols

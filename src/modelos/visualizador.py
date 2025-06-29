@@ -19,10 +19,7 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay
 )
 from typing import Dict, List, Optional, Any, Literal
-import logging
-
-# Obtener el logger
-logger = logging.getLogger("visualizador")
+from src.audit.logger import log_audit
 
 # Configuración global para visualizaciones
 PALETA_COLORES = {
@@ -66,6 +63,8 @@ def configurar_estilo_plots():
 def generar_matriz_confusion(
     y_true: np.ndarray, 
     y_pred: np.ndarray, 
+    id_sesion: str,
+    usuario: str,
     clases: Optional[List[str]] = None,
     normalizar: Optional[Literal['true', 'pred', 'all']] = None,
     titulo: Optional[str] = None
@@ -76,6 +75,8 @@ def generar_matriz_confusion(
     Args:
         y_true: Valores reales de las clases
         y_pred: Valores predichos por el modelo
+        id_sesion (str): ID de la sesión actual para trazabilidad
+        usuario (str): Usuario que ejecuta la operación
         clases: Lista de nombres de las clases (opcional)
         normalizar: Tipo de normalización ('true', 'pred', 'all' o None)
         titulo: Título del gráfico
@@ -108,18 +109,35 @@ def generar_matriz_confusion(
         # Ajustar diseño
         fig.tight_layout()
         
+        log_audit(
+            id_sesion,
+            usuario,
+            "MATRIZ_CONFUSION_OK",
+            "visualizador",
+            "Matriz de confusión generada correctamente"
+        )
+        
         return fig
     except Exception as e:
-        logger.error(f"Error al generar matriz de confusión: {str(e)}")
+        log_audit(
+            id_sesion,
+            usuario,
+            "ERROR_MATRIZ_CONFUSION",
+            "visualizador",
+            f"Error al generar matriz de confusión: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.text(0.5, 0.5, f"Error al generar matriz de confusión:\n{str(e)}",
                 ha='center', va='center', fontsize=12, color='red')
         ax.axis('off')
         return fig
+
 def generar_curva_roc(
     y_true: np.ndarray, 
     y_prob: np.ndarray, 
+    id_sesion: str,
+    usuario: str,
     clases: Optional[List[str]] = None,
     multi_clase: bool = False,
     titulo: Optional[str] = None
@@ -130,6 +148,8 @@ def generar_curva_roc(
     Args:
         y_true: Valores reales de las clases
         y_prob: Probabilidades predichas por el modelo
+        id_sesion (str): ID de la sesión actual para trazabilidad
+        usuario (str): Usuario que ejecuta la operación
         clases: Lista de nombres de las clases (opcional)
         multi_clase: Si es True, genera curvas ROC para cada clase en problemas multiclase
         titulo: Título del gráfico
@@ -180,7 +200,13 @@ def generar_curva_roc(
                             y_prob_clase = y_prob[:, i]
                         else:
                             # Si solo tenemos una columna, no podemos hacer multiclase
-                            logger.warning("No se pueden generar curvas ROC multiclase con una sola columna de probabilidades")
+                            log_audit(
+                                id_sesion,
+                                usuario,
+                                "WARNING_ROC_MULTICLASE",
+                                "visualizador",
+                                "No se pueden generar curvas ROC multiclase con una sola columna de probabilidades"
+                            )
                             break
                             
                         # Calcular curva ROC
@@ -191,7 +217,13 @@ def generar_curva_roc(
                         nombre_clase = clases[i] if clases and i < len(clases) else f"Clase {clase}"
                         ax.plot(fpr, tpr, label=f'{nombre_clase} (AUC = {roc_auc:.3f})')
                     except Exception as e:
-                        logger.warning(f"Error al calcular curva ROC para clase {clase}: {str(e)}")
+                        log_audit(
+                            id_sesion,
+                            usuario,
+                            "WARNING_ROC_CLASE",
+                            "visualizador",
+                            f"Error al calcular curva ROC para clase {clase}: {str(e)}"
+                        )
                         continue
                     roc_auc = auc(fpr, tpr)
                     ax.plot(fpr, tpr, label=f'{clase} (AUC = {roc_auc:.3f})')
@@ -209,18 +241,35 @@ def generar_curva_roc(
         # Ajustar diseño
         fig.tight_layout()
         
+        log_audit(
+            id_sesion,
+            usuario,
+            "CURVA_ROC_OK",
+            "visualizador",
+            "Curva ROC generada correctamente"
+        )
+        
         return fig
     except Exception as e:
-        logger.error(f"Error al generar curva ROC: {str(e)}")
+        log_audit(
+            id_sesion,
+            usuario,
+            "ERROR_CURVA_ROC",
+            "visualizador",
+            f"Error al generar curva ROC: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.text(0.5, 0.5, f"Error al generar curva ROC:\n{str(e)}",
                 ha='center', va='center', fontsize=12, color='red')
         ax.axis('off')
         return fig
+
 def generar_curva_precision_recall(
     y_true: np.ndarray, 
     y_prob: np.ndarray, 
+    id_sesion: str,
+    usuario: str,
     clases: Optional[List[str]] = None,
     multi_clase: bool = False,
     titulo: Optional[str] = None
@@ -231,6 +280,8 @@ def generar_curva_precision_recall(
     Args:
         y_true: Valores reales de las clases
         y_prob: Probabilidades predichas por el modelo
+        id_sesion (str): ID de la sesión actual para trazabilidad
+        usuario (str): Usuario que ejecuta la operación
         clases: Lista de nombres de las clases (opcional)
         multi_clase: Si es True, genera curvas PR para cada clase en problemas multiclase
         titulo: Título del gráfico
@@ -280,7 +331,13 @@ def generar_curva_precision_recall(
                             y_prob_clase = y_prob[:, i]
                         else:
                             # Si solo tenemos una columna, no podemos hacer multiclase
-                            logger.warning("No se pueden generar curvas PR multiclase con una sola columna de probabilidades")
+                            log_audit(
+                                id_sesion,
+                                usuario,
+                                "WARNING_PR_MULTICLASE",
+                                "visualizador",
+                                "No se pueden generar curvas PR multiclase con una sola columna de probabilidades"
+                            )
                             break
                             
                         # Calcular curva PR
@@ -291,7 +348,13 @@ def generar_curva_precision_recall(
                         nombre_clase = clases[i] if clases and i < len(clases) else f"Clase {clase}"
                         ax.plot(recall, precision, label=f'{nombre_clase} (AUC = {pr_auc:.3f})')
                     except Exception as e:
-                        logger.warning(f"Error al calcular curva PR para clase {clase}: {str(e)}")
+                        log_audit(
+                            id_sesion,
+                            usuario,
+                            "WARNING_PR_CLASE",
+                            "visualizador",
+                            f"Error al calcular curva PR para clase {clase}: {str(e)}"
+                        )
                         continue
                     pr_auc = auc(recall, precision)
                     ax.plot(recall, precision, label=f'{clase} (AUC = {pr_auc:.3f})')
@@ -307,18 +370,35 @@ def generar_curva_precision_recall(
         # Ajustar diseño
         fig.tight_layout()
         
+        log_audit(
+            id_sesion,
+            usuario,
+            "CURVA_PR_OK",
+            "visualizador",
+            "Curva Precision-Recall generada correctamente"
+        )
+        
         return fig
     except Exception as e:
-        logger.error(f"Error al generar curva Precision-Recall: {str(e)}")
+        log_audit(
+            id_sesion,
+            usuario,
+            "ERROR_CURVA_PR",
+            "visualizador",
+            f"Error al generar curva Precision-Recall: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.text(0.5, 0.5, f"Error al generar curva Precision-Recall:\n{str(e)}",
                 ha='center', va='center', fontsize=12, color='red')
         ax.axis('off')
         return fig
+
 def generar_grafico_residuos(
     y_true: np.ndarray, 
     y_pred: np.ndarray, 
+    id_sesion: str,
+    usuario: str,
     titulo: Optional[str] = None
 ) -> Figure:
     """
@@ -327,6 +407,8 @@ def generar_grafico_residuos(
     Args:
         y_true: Valores reales
         y_pred: Valores predichos por el modelo
+        id_sesion (str): ID de la sesión actual para trazabilidad
+        usuario (str): Usuario que ejecuta la operación
         titulo: Título del gráfico
         
     Returns:
@@ -381,18 +463,35 @@ def generar_grafico_residuos(
           # Ajustar diseño
         fig.tight_layout(rect=(0, 0, 1, 0.96))  # Dejar espacio para el título
         
+        log_audit(
+            id_sesion,
+            usuario,
+            "GRAFICO_RESIDUOS_OK",
+            "visualizador",
+            "Gráfico de residuos generado correctamente"
+        )
+        
         return fig
     except Exception as e:
-        logger.error(f"Error al generar gráfico de residuos: {str(e)}")
+        log_audit(
+            id_sesion,
+            usuario,
+            "ERROR_RESIDUOS",
+            "visualizador",
+            f"Error al generar gráfico de residuos: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.text(0.5, 0.5, f"Error al generar gráfico de residuos:\n{str(e)}",
                 ha='center', va='center', fontsize=12, color='red')
         ax.axis('off')
         return fig
+
 def comparar_distribuciones(
     y_true: np.ndarray, 
     y_pred: np.ndarray, 
+    id_sesion: str,
+    usuario: str,
     titulo: Optional[str] = None
 ) -> Figure:
     """
@@ -401,6 +500,8 @@ def comparar_distribuciones(
     Args:
         y_true: Valores reales
         y_pred: Valores predichos por el modelo
+        id_sesion (str): ID de la sesión actual para trazabilidad
+        usuario (str): Usuario que ejecuta la operación
         titulo: Título del gráfico
         
     Returns:
@@ -435,19 +536,36 @@ def comparar_distribuciones(
           # Ajustar diseño
         fig.tight_layout(rect=(0, 0, 1, 0.94))  # Dejar espacio para el título
         
+        log_audit(
+            id_sesion,
+            usuario,
+            "COMPARAR_DISTRIBUCIONES_OK",
+            "visualizador",
+            "Comparación de distribuciones generada correctamente"
+        )
+        
         return fig
     except Exception as e:
-        logger.error(f"Error al comparar distribuciones: {str(e)}")
+        log_audit(
+            id_sesion,
+            usuario,
+            "ERROR_DISTRIBUCIONES",
+            "visualizador",
+            f"Error al comparar distribuciones: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.text(0.5, 0.5, f"Error al comparar distribuciones:\n{str(e)}",
                 ha='center', va='center', fontsize=12, color='red')
         ax.axis('off')
         return fig
+
 def comparar_modelos_roc(
     modelos: Dict[str, Dict[str, Any]],
     X_test: np.ndarray,
     y_test: np.ndarray,
+    id_sesion: str,
+    usuario: str,
     titulo: Optional[str] = None
 ) -> Figure:
     """
@@ -457,6 +575,8 @@ def comparar_modelos_roc(
         modelos: Diccionario con los modelos a comparar (nombre: modelo entrenado)
         X_test: Datos de prueba
         y_test: Etiquetas reales
+        id_sesion (str): ID de la sesión actual para trazabilidad
+        usuario (str): Usuario que ejecuta la operación
         titulo: Título del gráfico
         
     Returns:
@@ -497,7 +617,13 @@ def comparar_modelos_roc(
                 
                 ax.plot(fpr, tpr, label=f'{nombre} (AUC = {roc_auc:.3f})', color=color)
             except Exception as e:
-                logger.warning(f"No se pudo generar curva ROC para el modelo {nombre}: {str(e)}")
+                log_audit(
+                    id_sesion,
+                    usuario,
+                    "WARNING_ROC_MODELO",
+                    "visualizador",
+                    f"No se pudo generar curva ROC para el modelo {nombre}: {str(e)}"
+                )
         
         # Personalizar gráfico
         ax.set_xlabel('Tasa de Falsos Positivos')
@@ -509,15 +635,30 @@ def comparar_modelos_roc(
         # Ajustar diseño
         fig.tight_layout()
         
+        log_audit(
+            id_sesion,
+            usuario,
+            "COMPARAR_MODELOS_ROC_OK",
+            "visualizador",
+            "Comparación de modelos ROC generada correctamente"
+        )
+        
         return fig
     except Exception as e:
-        logger.error(f"Error al comparar modelos con curvas ROC: {str(e)}")
+        log_audit(
+            id_sesion,
+            usuario,
+            "ERROR_COMPARAR_MODELOS_ROC",
+            "visualizador",
+            f"Error al comparar modelos con curvas ROC: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.text(0.5, 0.5, f"Error al comparar modelos con curvas ROC:\n{str(e)}",
                 ha='center', va='center', fontsize=12, color='red')
         ax.axis('off')
         return fig
+
 def figura_a_base64(fig: Figure) -> str:
     """
     Convierte una figura de matplotlib a una cadena base64 para mostrar en HTML.

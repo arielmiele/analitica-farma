@@ -10,11 +10,10 @@ import time
 # Importar módulos propios
 from src.modelos.recomendador import recomendar_mejor_modelo, guardar_modelo_seleccionado
 from src.state.session_manager import SessionManager
-from src.audit.logger import Logger
+from src.audit.logger import log_audit
 
-# Inicializar gestor de sesión y logger
+# Inicializar gestor de sesión
 session = SessionManager()
-logger = Logger("Recomendar_Modelo")
 
 def main():
     st.title("👑 Recomendación de Modelo")
@@ -80,16 +79,24 @@ def main():
             
             try:
                 # Obtener recomendación
-                recomendacion = recomendar_mejor_modelo(criterio=criterio)
+                recomendacion = recomendar_mejor_modelo(
+                    criterio=criterio,
+                    benchmarking=resultados_benchmarking,
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                    usuario=session.obtener_estado("usuario_id", "sistema")
+                )
                 
                 # Guardar en la sesión
                 session.guardar_estado("modelo_recomendado", recomendacion)
                 
                 # Registrar en el log
-                logger.log_evento(
-                    "RECOMENDACION_MODELO",
-                    f"Recomendación de modelo con criterio: {criterio}",
-                    "Recomendar_Modelo"
+                log_audit(
+                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                    accion="RECOMENDACION_MODELO",
+                    entidad="Recomendar_Modelo",
+                    id_entidad=criterio,
+                    detalles=f"Recomendación de modelo con criterio: {criterio}",
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                 )
                 
                 st.success("✅ Recomendación completada con éxito.")
@@ -99,11 +106,13 @@ def main():
                 
             except Exception as e:
                 st.error(f"❌ Error al obtener recomendación: {str(e)}")
-                logger.log_evento(
-                    "ERROR_RECOMENDACION",
-                    f"Error en recomendación: {str(e)}",
-                    "Recomendar_Modelo",
-                    tipo="error"
+                log_audit(
+                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                    accion="ERROR_RECOMENDACION",
+                    entidad="Recomendar_Modelo",
+                    id_entidad=criterio,
+                    detalles=f"Error en recomendación: {str(e)}",
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                 )
     
     # Si ya hay un modelo recomendado en la sesión, mostrarlo
@@ -144,28 +153,36 @@ def main():
                     # Guardar selección
                     resultado = guardar_modelo_seleccionado(
                         nombre_modelo=mejor_modelo['nombre'],
-                        comentarios="Seleccionado automáticamente como mejor modelo del benchmarking."
+                        comentarios="Seleccionado automáticamente como mejor modelo del benchmarking.",
+                        benchmarking=resultados_benchmarking,
+                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                        usuario=session.obtener_estado("usuario_id", "sistema")
                     )
                     
                     if resultado.get('exito'):
                         st.success(f"✅ {resultado['mensaje']}")
                         
                         # Registrar en el log
-                        logger.log_evento(
-                            "SELECCION_MODELO",
-                            f"Modelo seleccionado: {mejor_modelo['nombre']}",
-                            "Recomendar_Modelo"
+                        log_audit(
+                            usuario=session.obtener_estado("usuario_id", "sistema"),
+                            accion="SELECCION_MODELO",
+                            entidad="Recomendar_Modelo",
+                            id_entidad=mejor_modelo['nombre'],
+                            detalles=f"Modelo seleccionado: {mejor_modelo['nombre']}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                         )
                     else:
                         st.error(f"❌ Error al seleccionar modelo: {resultado.get('error')}")
                         
                 except Exception as e:
                     st.error(f"❌ Error al seleccionar modelo: {str(e)}")
-                    logger.log_evento(
-                        "ERROR_SELECCION",
-                        f"Error al seleccionar modelo: {str(e)}",
-                        "Recomendar_Modelo",
-                        tipo="error"
+                    log_audit(
+                        usuario=session.obtener_estado("usuario_id", "sistema"),
+                        accion="ERROR_SELECCION",
+                        entidad="Recomendar_Modelo",
+                        id_entidad=mejor_modelo['nombre'],
+                        detalles=f"Error al seleccionar modelo: {str(e)}",
+                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                     )
 
 def mostrar_recomendacion(recomendacion, resultados_benchmarking):
@@ -378,28 +395,36 @@ def mostrar_recomendacion(recomendacion, resultados_benchmarking):
                 # Guardar selección
                 resultado = guardar_modelo_seleccionado(
                     nombre_modelo=modelo['nombre'],
-                    comentarios=f"Seleccionado con criterio: {recomendacion['criterio_usado']}"
+                    comentarios=f"Seleccionado con criterio: {recomendacion['criterio_usado']}",
+                    benchmarking=resultados_benchmarking,
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                    usuario=session.obtener_estado("usuario_id", "sistema")
                 )
                 
                 if resultado.get('exito'):
                     st.success(f"✅ {resultado['mensaje']}")
                     
                     # Registrar en el log
-                    logger.log_evento(
-                        "SELECCION_MODELO",
-                        f"Modelo seleccionado: {modelo['nombre']}",
-                        "Recomendar_Modelo"
+                    log_audit(
+                        usuario=session.obtener_estado("usuario_id", "sistema"),
+                        accion="SELECCION_MODELO",
+                        entidad="Recomendar_Modelo",
+                        id_entidad=modelo['nombre'],
+                        detalles=f"Modelo seleccionado: {modelo['nombre']}",
+                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                     )
                 else:
                     st.error(f"❌ Error al seleccionar modelo: {resultado.get('error')}")
                     
             except Exception as e:
                 st.error(f"❌ Error al seleccionar modelo: {str(e)}")
-                logger.log_evento(
-                    "ERROR_SELECCION",
-                    f"Error al seleccionar modelo: {str(e)}",
-                    "Recomendar_Modelo",
-                    tipo="error"
+                log_audit(
+                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                    accion="ERROR_SELECCION",
+                    entidad="Recomendar_Modelo",
+                    id_entidad=modelo['nombre'],
+                    detalles=f"Error al seleccionar modelo: {str(e)}",
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                 )
     
     with col2:
@@ -422,28 +447,36 @@ def mostrar_recomendacion(recomendacion, resultados_benchmarking):
                 # Guardar selección
                 resultado = guardar_modelo_seleccionado(
                     nombre_modelo=otro_modelo,
-                    comentarios=comentarios
+                    comentarios=comentarios,
+                    benchmarking=resultados_benchmarking,
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                    usuario=session.obtener_estado("usuario_id", "sistema")
                 )
                 
                 if resultado.get('exito'):
                     st.success(f"✅ {resultado['mensaje']}")
                     
                     # Registrar en el log
-                    logger.log_evento(
-                        "SELECCION_MODELO_ALTERNATIVO",
-                        f"Modelo alternativo seleccionado: {otro_modelo}",
-                        "Recomendar_Modelo"
+                    log_audit(
+                        usuario=session.obtener_estado("usuario_id", "sistema"),
+                        accion="SELECCION_MODELO_ALTERNATIVO",
+                        entidad="Recomendar_Modelo",
+                        id_entidad=otro_modelo,
+                        detalles=f"Modelo alternativo seleccionado: {otro_modelo}",
+                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                     )
                 else:
                     st.error(f"❌ Error al seleccionar modelo: {resultado.get('error')}")
                     
             except Exception as e:
                 st.error(f"❌ Error al seleccionar modelo: {str(e)}")
-                logger.log_evento(
-                    "ERROR_SELECCION",
-                    f"Error al seleccionar modelo alternativo: {str(e)}",
-                    "Recomendar_Modelo",
-                    tipo="error"
+                log_audit(
+                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                    accion="ERROR_SELECCION",
+                    entidad="Recomendar_Modelo",
+                    id_entidad=otro_modelo,
+                    detalles=f"Error al seleccionar modelo alternativo: {str(e)}",
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                 )
     
     # Navegación

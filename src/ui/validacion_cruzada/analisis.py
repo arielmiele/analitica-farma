@@ -6,31 +6,30 @@ La lógica de cálculos está en src.modelos.validacion_cruzada
 
 import streamlit as st
 from src.state.session_manager import SessionManager
-from src.audit.logger import Logger
 from src.modelos.validacion_cruzada import (
     verificar_datos_para_validacion,
     generar_analisis_completo_validacion_cruzada
 )
+from src.audit.logger import log_audit
 
 # Instancias de servicios
 session = SessionManager()
-logger = Logger("Validacion_Cruzada_UI")
 
 
-def verificar_datos_disponibles(resultados_benchmarking):
+def verificar_datos_disponibles(resultados_benchmarking, id_sesion: str, usuario: str):
     """
     Verifica si los datos necesarios están disponibles para la validación cruzada.
     Delegando a la lógica de negocio.
     """
-    return verificar_datos_para_validacion(resultados_benchmarking)
+    return verificar_datos_para_validacion(resultados_benchmarking, id_sesion, usuario)
 
 
-def ejecutar_analisis_completo(modelo, configuracion, resultados_benchmarking):
+def ejecutar_analisis_completo(modelo, configuracion, resultados_benchmarking, id_sesion: str, usuario: str):
     """Ejecuta el análisis completo de validación cruzada."""
     st.subheader("🚀 Análisis de Validación Cruzada")
     
     # Verificar datos básicos necesarios
-    datos_disponibles = verificar_datos_disponibles(resultados_benchmarking)
+    datos_disponibles = verificar_datos_disponibles(resultados_benchmarking, id_sesion, usuario)
     if not datos_disponibles['datos_ok']:
         st.error(f"❌ {datos_disponibles['mensaje']}")
         st.info("💡 " + datos_disponibles['solucion'])
@@ -57,16 +56,16 @@ def ejecutar_analisis_completo(modelo, configuracion, resultados_benchmarking):
     
     # Botón para ejecutar análisis
     if st.button("🔬 **Ejecutar Análisis Completo de Validación**", type="primary"):
-        realizar_analisis_validacion(modelo, configuracion, resultados_benchmarking)
+        realizar_analisis_validacion(modelo, configuracion, resultados_benchmarking, id_sesion, usuario)
 
 
-def realizar_analisis_validacion(modelo, config, resultados_benchmarking):
+def realizar_analisis_validacion(modelo, config, resultados_benchmarking, id_sesion: str, usuario: str):
     """Realiza el análisis completo de validación usando la lógica de negocio."""
     try:
         with st.spinner("🔄 Ejecutando validación cruzada y generando curvas de aprendizaje..."):
             
             # Usar la función de lógica de negocio del módulo de modelos
-            resultados_curvas = generar_analisis_completo_validacion_cruzada(modelo, resultados_benchmarking)
+            resultados_curvas = generar_analisis_completo_validacion_cruzada(modelo, resultados_benchmarking, id_sesion, usuario)
             
             if 'error' in resultados_curvas:
                 st.error(f"❌ Error al generar curvas de aprendizaje: {resultados_curvas['error']}")
@@ -89,8 +88,4 @@ def realizar_analisis_validacion(modelo, config, resultados_benchmarking):
             
     except Exception as e:
         st.error(f"❌ Error durante el análisis: {str(e)}")
-        logger.log_evento(
-            "ERROR_VALIDACION_CRUZADA", 
-            f"Error en análisis de {modelo['nombre']}: {str(e)}", 
-            "07_Validacion_Cruzada"
-        )
+        log_audit(id_sesion, usuario, "ERROR_VALIDACION_CRUZADA", "validacion_cruzada_ui", str(e))

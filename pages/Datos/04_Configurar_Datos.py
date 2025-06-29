@@ -7,13 +7,17 @@ from datetime import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # Importar módulos de la aplicación
-from src.audit.logger import setup_logger, log_operation, log_audit
+from src.audit.logger import setup_logger, log_audit
 from src.datos.validador import validar_estructura, validar_variable_objetivo
 from src.modelos.configurador import guardar_configuracion_modelo
 
 # Configurar el logger
-usuario_id = st.session_state.get("usuario_id", 1)
-logger = setup_logger("configurar_datos", id_usuario=usuario_id)
+usuario_id_raw = st.session_state.get("usuario_id", "sistema")
+try:
+    usuario_id = int(usuario_id_raw)
+except (ValueError, TypeError):
+    usuario_id = 0  # Valor por defecto si no es convertible a int
+logger = setup_logger("configurar_datos")
 
 # Inicializar session_state para esta página
 if 'variable_objetivo' not in st.session_state:
@@ -63,14 +67,14 @@ else:
             if st.button("🔢 Regresión", use_container_width=True):
                 st.session_state.tipo_problema = "regresion"
                 st.session_state.paso_configuracion = 1
-                log_operation(logger, "SELECCION_TIPO_PROBLEMA", "Usuario seleccionó problema de regresión")
+                log_audit(usuario_id, "SELECCION_TIPO_PROBLEMA", "configurar_datos", st.session_state.filename, "Usuario seleccionó problema de regresión", id_sesion=st.session_state.get("id_sesion", "sin_sesion"))
                 st.rerun()
                 
         with col2:
             if st.button("🏷️ Clasificación", use_container_width=True):
                 st.session_state.tipo_problema = "clasificacion"
                 st.session_state.paso_configuracion = 1
-                log_operation(logger, "SELECCION_TIPO_PROBLEMA", "Usuario seleccionó problema de clasificación")
+                log_audit(usuario_id, "SELECCION_TIPO_PROBLEMA", "configurar_datos", st.session_state.filename, "Usuario seleccionó problema de clasificación", id_sesion=st.session_state.get("id_sesion", "sin_sesion"))
                 st.rerun()
                 
     elif st.session_state.paso_configuracion == 1:        
@@ -139,7 +143,9 @@ else:
                     es_valida, mensaje = validar_variable_objetivo(
                         st.session_state.df, 
                         variable_objetivo, 
-                        st.session_state.tipo_problema
+                        st.session_state.tipo_problema,
+                        usuario=usuario_id,
+                        id_sesion=st.session_state.get("id_sesion", "sin_sesion")
                     )
                     
                     if not es_valida:
@@ -157,22 +163,27 @@ else:
                             # Validar estructura completa
                             estructura_valida, mensaje_estructura = validar_estructura(
                                 st.session_state.df,
-                                configuracion
+                                configuracion,
+                                usuario=usuario_id,
+                                id_sesion=st.session_state.get("id_sesion", "sin_sesion")
                             )
                             
                             if estructura_valida:
                                 # Guardar configuración en la base de datos
-                                guardar_configuracion_modelo(configuracion, usuario_id)
+                                guardar_configuracion_modelo(configuracion, usuario=usuario_id, id_usuario=usuario_id, id_sesion=st.session_state.get("id_sesion", "sin_sesion"))
                                 
                                 # Actualizar estado
                                 st.session_state.configuracion_validada = True
                                 st.session_state.paso_configuracion = 2
                                 
                                 # Registrar acción
-                                log_operation(
-                                    logger, 
+                                log_audit(
+                                    usuario_id, 
                                     "CONFIGURACION_VARIABLES", 
-                                    f"Variable objetivo: {variable_objetivo}, Predictoras: {variables_seleccionadas}"
+                                    "configurar_datos", 
+                                    st.session_state.filename,
+                                    f"Variable objetivo: {variable_objetivo}, Predictoras: {variables_seleccionadas}",
+                                    id_sesion=st.session_state.get("id_sesion", "sin_sesion")
                                 )
                                 
                                 st.rerun()
@@ -229,6 +240,8 @@ else:
                     usuario_id, 
                     "NAVEGACION", 
                     "entrenar_modelos", 
-                    f"Continuar con entrenamiento de modelos para {st.session_state.filename}"
+                    st.session_state.filename,
+                    f"Continuar con entrenamiento de modelos para {st.session_state.filename}",
+                    id_sesion=st.session_state.get("id_sesion", "sin_sesion")
                 )
                 st.switch_page("pages/Machine Learning/05_Entrenar_Modelos.py")

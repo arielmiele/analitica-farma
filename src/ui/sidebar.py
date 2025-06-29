@@ -15,7 +15,6 @@ class SidebarComponents:
         if SessionManager.is_logged_in():
             with st.expander("👤 Usuario Conectado", expanded=True):
                 user = SessionManager.get_user_info()
-                st.write("**ID:**", user["usuario_id"])
                 st.write("**Nombre:**", user["usuario_nombre"])
                 st.write("**Rol:**", user["usuario_rol"])
                 st.write("**Email:**", user["usuario_email"])

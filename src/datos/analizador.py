@@ -6,12 +6,9 @@ generar estadísticas descriptivas.
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Any, Optional
-import logging
+from src.audit.logger import log_audit
 
-# Obtener el logger
-logger = logging.getLogger("analizador")
-
-def calcular_metricas_basicas(df: pd.DataFrame) -> Dict[str, Any]:
+def calcular_metricas_basicas(df: pd.DataFrame, id_sesion: str) -> Dict[str, Any]:
     """
     Calcula métricas básicas de calidad del DataFrame.
     
@@ -51,10 +48,17 @@ def calcular_metricas_basicas(df: pd.DataFrame) -> Dict[str, Any]:
             "completitud": completitud
         }
     except Exception as e:
-        logger.error(f"Error al calcular métricas básicas: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_METRICAS_BASICAS",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al calcular métricas básicas: {str(e)}",
+            id_sesion=id_sesion
+        )
         return {"error": str(e)}
 
-def analizar_nulos_por_columna(df: pd.DataFrame) -> pd.DataFrame:
+def analizar_nulos_por_columna(df: pd.DataFrame, id_sesion: str) -> pd.DataFrame:
     """
     Analiza los valores nulos por columna.
     
@@ -89,10 +93,17 @@ def analizar_nulos_por_columna(df: pd.DataFrame) -> pd.DataFrame:
         
         return resultado
     except Exception as e:
-        logger.error(f"Error al analizar nulos por columna: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_NULOS_POR_COLUMNA",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al analizar nulos por columna: {str(e)}",
+            id_sesion=id_sesion
+        )
         return pd.DataFrame()
 
-def detectar_outliers(df: pd.DataFrame, metodo: str = 'iqr', umbral: float = 1.5) -> Dict[str, Dict[str, Any]]:
+def detectar_outliers(df: pd.DataFrame, metodo: str = 'iqr', umbral: float = 1.5, id_sesion: str = "sin_sesion") -> Dict[str, Dict[str, Any]]:
     """
     Detecta outliers en columnas numéricas usando diferentes métodos.
     
@@ -167,11 +178,18 @@ def detectar_outliers(df: pd.DataFrame, metodo: str = 'iqr', umbral: float = 1.5
             }
     
     except Exception as e:
-        logger.error(f"Error al detectar outliers: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_OUTLIERS",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al detectar outliers: {str(e)}",
+            id_sesion=id_sesion
+        )
     
     return resultados
 
-def analizar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) -> Dict[str, Any]:
+def analizar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None, id_sesion: str = "sin_sesion") -> Dict[str, Any]:
     """
     Analiza duplicados en el DataFrame, opcionalmente basado en columnas específicas.
     
@@ -213,10 +231,17 @@ def analizar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) 
             'grupos_duplicados': grupos_duplicados
         }
     except Exception as e:
-        logger.error(f"Error al analizar duplicados: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_DUPLICADOS",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al analizar duplicados: {str(e)}",
+            id_sesion=id_sesion
+        )
         return {'error': str(e)}
 
-def generar_estadisticas_por_columna(df: pd.DataFrame) -> pd.DataFrame:
+def generar_estadisticas_por_columna(df: pd.DataFrame, id_sesion: str) -> pd.DataFrame:
     """
     Genera estadísticas descriptivas por columna, mostrando solo la información
     relevante para cada tipo de dato y evitando filas y columnas innecesarias.
@@ -359,10 +384,17 @@ def generar_estadisticas_por_columna(df: pd.DataFrame) -> pd.DataFrame:
         return df_resultado[cols_existentes]
         
     except Exception as e:
-        logger.error(f"Error al generar estadísticas por columna: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_ESTADISTICAS_COLUMNA",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al generar estadísticas por columna: {str(e)}",
+            id_sesion=id_sesion
+        )
         return pd.DataFrame()
 
-def evaluar_calidad_global(df: pd.DataFrame) -> Dict[str, Any]:
+def evaluar_calidad_global(df: pd.DataFrame, id_sesion: str) -> Dict[str, Any]:
     """
     Evalúa la calidad global del dataset y asigna una calificación.
     
@@ -374,7 +406,7 @@ def evaluar_calidad_global(df: pd.DataFrame) -> Dict[str, Any]:
     """
     try:
         # Obtener métricas básicas
-        metricas = calcular_metricas_basicas(df)
+        metricas = calcular_metricas_basicas(df, id_sesion)
         
         # Calcular puntaje de calidad (0-100)
         puntaje = 0
@@ -388,7 +420,7 @@ def evaluar_calidad_global(df: pd.DataFrame) -> Dict[str, Any]:
         puntaje_duplicados = min(30, 30 * (1 - porcentaje_duplicados / 100))
         
         # Componente de outliers (0-30 puntos)
-        outliers = detectar_outliers(df)
+        outliers = detectar_outliers(df, id_sesion=id_sesion)
         porcentaje_outliers_promedio = np.mean([info.get('porcentaje', 0) for info in outliers.values()]) if outliers else 0
         puntaje_outliers = min(30.0, 30 * (1 - float(porcentaje_outliers_promedio) / 100))
         
@@ -414,10 +446,17 @@ def evaluar_calidad_global(df: pd.DataFrame) -> Dict[str, Any]:
             'metricas': metricas
         }
     except Exception as e:
-        logger.error(f"Error al evaluar calidad global: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_CALIDAD_GLOBAL",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al evaluar calidad global: {str(e)}",
+            id_sesion=id_sesion
+        )
         return {'error': str(e)}
 
-def obtener_recomendaciones(df: pd.DataFrame) -> List[Dict[str, str]]:
+def obtener_recomendaciones(df: pd.DataFrame, id_sesion: str) -> List[Dict[str, str]]:
     """
     Genera recomendaciones automáticas basadas en el análisis de calidad.
     
@@ -431,7 +470,7 @@ def obtener_recomendaciones(df: pd.DataFrame) -> List[Dict[str, str]]:
     
     try:
         # Analizar nulos
-        nulos_por_columna = analizar_nulos_por_columna(df)
+        nulos_por_columna = analizar_nulos_por_columna(df, id_sesion)
         
         # Recomendar acciones para columnas con muchos nulos
         columnas_criticas = nulos_por_columna[nulos_por_columna['porcentaje'] > 50]
@@ -451,7 +490,7 @@ def obtener_recomendaciones(df: pd.DataFrame) -> List[Dict[str, str]]:
             })
         
         # Analizar duplicados
-        duplicados = analizar_duplicados(df)
+        duplicados = analizar_duplicados(df, id_sesion=id_sesion)
         if duplicados.get('porcentaje', 0) > 5:
             recomendaciones.append({
                 'tipo': 'advertencia',
@@ -460,7 +499,7 @@ def obtener_recomendaciones(df: pd.DataFrame) -> List[Dict[str, str]]:
             })
         
         # Analizar outliers
-        outliers = detectar_outliers(df)
+        outliers = detectar_outliers(df, id_sesion=id_sesion)
         columnas_con_outliers = [col for col, info in outliers.items() if info.get('porcentaje', 0) > 5]
         
         if columnas_con_outliers:
@@ -471,7 +510,7 @@ def obtener_recomendaciones(df: pd.DataFrame) -> List[Dict[str, str]]:
             })
         
         # Recomendación general basada en calidad
-        evaluacion = evaluar_calidad_global(df)
+        evaluacion = evaluar_calidad_global(df, id_sesion)
         calificacion = evaluacion.get('calificacion', 'Desconocida')
         
         if calificacion == 'Deficiente':
@@ -508,7 +547,14 @@ def obtener_recomendaciones(df: pd.DataFrame) -> List[Dict[str, str]]:
             })
         
     except Exception as e:
-        logger.error(f"Error al generar recomendaciones: {str(e)}")
+        log_audit(
+            usuario="sistema",
+            accion="ERROR_RECOMENDACIONES",
+            entidad="analizador",
+            id_entidad="",
+            detalles=f"Error al generar recomendaciones: {str(e)}",
+            id_sesion=id_sesion
+        )
         recomendaciones.append({
             'tipo': 'error',
             'mensaje': f"Error al analizar los datos: {str(e)}"

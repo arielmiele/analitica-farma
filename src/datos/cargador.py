@@ -6,29 +6,11 @@ import os
 import pandas as pd
 import streamlit as st
 from datetime import datetime
-import sys
 from typing import Optional
+from src.audit.logger import log_audit
 
-# Importar el módulo de logging
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from audit.logger import setup_logger
-
-# Configurar el logger específico para este módulo
-logger = setup_logger("cargador")
-
-
-def cargar_datos_desde_csv(archivo, **kwargs):
-    """
-    Carga datos desde un archivo CSV y devuelve el DataFrame junto con metadatos básicos.
-    
-    Args:
-        archivo: Objeto de archivo o ruta al archivo CSV
-        **kwargs: Argumentos adicionales para pd.read_csv
-    
-    Returns:
-        pd.DataFrame: DataFrame con los datos cargados
-        dict: Metadatos de la carga
-    """
+def cargar_datos_desde_csv(archivo, id_sesion: str, **kwargs):
+    nombre_archivo = "N/A"
     try:
         # Determinar el nombre del archivo
         if hasattr(archivo, 'name'):
@@ -41,7 +23,14 @@ def cargar_datos_desde_csv(archivo, **kwargs):
         
         # Validar que el DataFrame no esté vacío
         if df.empty:
-            logger.warning(f"El archivo {nombre_archivo} está vacío o no contiene datos válidos")
+            log_audit(
+                "sistema",
+                "CARGA_CSV_VACIO",
+                "cargador",
+                nombre_archivo,
+                f"El archivo {nombre_archivo} está vacío o no contiene datos válidos",
+                id_sesion=id_sesion
+            )
             return df, {"error": "El archivo está vacío", "nombre_archivo": nombre_archivo, "origen": "csv"}
         
         # Metadatos básicos
@@ -55,16 +44,30 @@ def cargar_datos_desde_csv(archivo, **kwargs):
             'origen': 'csv'
         }
         
-        logger.info(f"Archivo CSV cargado exitosamente: {nombre_archivo}, {df.shape[0]} filas, {df.shape[1]} columnas")
+        log_audit(
+            "sistema",
+            "CARGA_CSV_EXITOSA",
+            "cargador",
+            nombre_archivo,
+            f"Archivo CSV cargado exitosamente: {nombre_archivo}, {df.shape[0]} filas, {df.shape[1]} columnas",
+            id_sesion=id_sesion
+        )
         
         return df, metadatos
     
     except Exception as e:
         error_msg = f"Error al cargar el archivo CSV: {str(e)}"
-        logger.error(error_msg)
+        log_audit(
+            "sistema",
+            "ERROR_CARGA_CSV",
+            "cargador",
+            nombre_archivo,
+            error_msg,
+            id_sesion=id_sesion
+        )
         raise Exception(error_msg)
 
-def validar_dataframe_csv(df):
+def validar_dataframe_csv(df, id_sesion: str):
     """
     Realiza validaciones básicas sobre un DataFrame cargado desde CSV.
     Args:
@@ -76,28 +79,64 @@ def validar_dataframe_csv(df):
     warnings = []
     if df.empty:
         warnings.append("El DataFrame está vacío.")
+        log_audit(
+            "sistema",
+            "VALIDACION_CSV_VACIO",
+            "cargador",
+            "N/A",
+            "El DataFrame está vacío.",
+            id_sesion=id_sesion
+        )
         return warnings, {}
     # Verificar filas completamente vacías
     filas_vacias = df.isna().all(axis=1).sum()
     if filas_vacias > 0:
         warning_msg = f"El archivo contiene {filas_vacias} filas completamente vacías"
         warnings.append(warning_msg)
-        logger.warning(warning_msg)
+        log_audit(
+            "sistema",
+            "VALIDACION_FILAS_VACIAS",
+            "cargador",
+            "N/A",
+            warning_msg,
+            id_sesion=id_sesion
+        )
     # Verificar columnas con valores faltantes
     columnas_con_nulos = {col: df[col].isna().sum() for col in df.columns if df[col].isna().any()}
     if columnas_con_nulos:
         warning_msg = f"Columnas con valores faltantes: {columnas_con_nulos}"
         warnings.append(warning_msg)
-        logger.warning(warning_msg)
+        log_audit(
+            "sistema",
+            "VALIDACION_COLUMNAS_NULOS",
+            "cargador",
+            "N/A",
+            warning_msg,
+            id_sesion=id_sesion
+        )
     # Verificar duplicados
     duplicados = df.duplicated().sum()
     if duplicados > 0:
         warning_msg = f"Se detectaron {duplicados} filas duplicadas"
         warnings.append(warning_msg)
-        logger.warning(warning_msg)
+        log_audit(
+            "sistema",
+            "VALIDACION_DUPLICADOS",
+            "cargador",
+            "N/A",
+            warning_msg,
+            id_sesion=id_sesion
+        )
     # Tipos de datos
     tipos_inferidos = {col: str(df[col].dtype) for col in df.columns}
-    logger.info(f"Tipos de datos inferidos: {tipos_inferidos}")
+    log_audit(
+        "sistema",
+        "VALIDACION_TIPOS_DATOS",
+        "cargador",
+        "N/A",
+        f"Tipos de datos inferidos: {tipos_inferidos}",
+        id_sesion=id_sesion
+    )
     metadatos_validacion = {
         'filas_vacias': filas_vacias,
         'columnas_con_nulos': columnas_con_nulos,
@@ -107,7 +146,7 @@ def validar_dataframe_csv(df):
     return warnings, metadatos_validacion
 
 
-def cargar_datos_entrada(columna_objetivo: Optional[str] = None):
+def cargar_datos_entrada(columna_objetivo: Optional[str] = None, id_sesion: str = "sin_sesion"):
     """
     Carga los datos de entrada (X, y) para explicación de modelos desde la sesión de Streamlit.
     Args:
@@ -133,5 +172,12 @@ def cargar_datos_entrada(columna_objetivo: Optional[str] = None):
         y = df[columna_objetivo]
         return X, y
     except Exception as e:
-        logger.error(f"Error en cargar_datos_entrada (sesión): {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_CARGA_DATOS_ENTRADA",
+            "cargador",
+            columna_objetivo if columna_objetivo else 'N/A',
+            f"Error en cargar_datos_entrada (sesión): {str(e)}",
+            id_sesion=id_sesion
+        )
         return None, None

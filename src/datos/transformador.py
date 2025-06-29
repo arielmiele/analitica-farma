@@ -11,12 +11,9 @@ especialmente para corregir problemas detectados durante la validación:
 import pandas as pd
 import numpy as np
 import re
-from src.audit.logger import setup_logger, log_operation
+from src.audit.logger import log_audit
 
-# Configurar logger específico para transformaciones
-logger = setup_logger("transformador")
-
-def corregir_tipo_datos(df, columna, tipo_destino, metodo='auto'):
+def corregir_tipo_datos(df, columna, tipo_destino, id_sesion, usuario, metodo='auto'):
     """
     Corrige el tipo de datos de una columna.
     
@@ -24,6 +21,8 @@ def corregir_tipo_datos(df, columna, tipo_destino, metodo='auto'):
         df (pd.DataFrame): DataFrame a transformar
         columna (str): Nombre de la columna a transformar
         tipo_destino (str): Tipo de dato destino ('int', 'float', 'str', 'bool', 'datetime')
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         metodo (str): Método de conversión ('auto', 'forzar', 'inferir')
         
     Returns:
@@ -37,9 +36,14 @@ def corregir_tipo_datos(df, columna, tipo_destino, metodo='auto'):
     
     df_result = df.copy()
     
-    # Registrar información de la transformación
-    log_operation(logger, "INICIO_TRANSFORMACION", 
-                 f"Iniciando corrección de tipo de dato en columna {columna} a {tipo_destino}")
+    log_audit(
+        usuario=usuario,
+        accion="INICIO_TRANSFORMACION",
+        entidad="transformador",
+        id_entidad=columna,
+        detalles=f"Iniciando corrección de tipo de dato en columna {columna} a {tipo_destino}",
+        id_sesion=id_sesion
+    )
     
     try:
         # Conversión según el tipo destino
@@ -85,31 +89,43 @@ def corregir_tipo_datos(df, columna, tipo_destino, metodo='auto'):
                 
         elif tipo_destino == 'datetime':
             # Para fechas, delegamos a la función especializada
-            df_result = estandarizar_fechas(df_result, columna, formato_destino='ISO')
+            df_result = estandarizar_fechas(df_result, columna, id_sesion, usuario, formato_destino='ISO')
             
         else:
             raise ValueError(f"Tipo de dato {tipo_destino} no soportado")
             
-        # Registrar éxito
-        log_operation(logger, "TRANSFORMACION_EXITOSA", 
-                     f"Corrección de tipo exitosa para columna {columna} a {tipo_destino}")
+        log_audit(
+            usuario=usuario,
+            accion="TRANSFORMACION_EXITOSA",
+            entidad="transformador",
+            id_entidad=columna,
+            detalles=f"Corrección de tipo exitosa para columna {columna} a {tipo_destino}",
+            id_sesion=id_sesion
+        )
         
     except Exception as e:
-        # Registrar error
-        log_operation(logger, "ERROR_TRANSFORMACION", 
-                     f"Error al corregir tipo de dato en columna {columna}: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_TRANSFORMACION",
+            entidad="transformador",
+            id_entidad=columna,
+            detalles=f"Error al corregir tipo de dato en columna {columna}: {str(e)}",
+            id_sesion=id_sesion
+        )
         raise
         
     return df_result
 
 
-def estandarizar_fechas(df, columna, formato_destino='ISO'):
+def estandarizar_fechas(df, columna, id_sesion, usuario, formato_destino='ISO'):
     """
     Estandariza el formato de fechas en una columna.
     
     Args:
         df (pd.DataFrame): DataFrame a transformar
         columna (str): Nombre de la columna con fechas
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         formato_destino (str): Formato de fecha destino 
                                ('ISO', 'DMY', 'MDY', 'YMD', 'datetime')
     
@@ -121,9 +137,14 @@ def estandarizar_fechas(df, columna, formato_destino='ISO'):
     
     df_result = df.copy()
     
-    # Registrar inicio de la transformación
-    log_operation(logger, "INICIO_ESTANDARIZACION", 
-                 f"Iniciando estandarización de fechas en columna {columna} a formato {formato_destino}")
+    log_audit(
+        usuario=usuario,
+        accion="INICIO_ESTANDARIZACION",
+        entidad="transformador",
+        id_entidad=columna,
+        detalles=f"Iniciando estandarización de fechas en columna {columna} a formato {formato_destino}",
+        id_sesion=id_sesion
+    )
     
     try:
         # Convertir a datetime primero (pandas intentará inferir el formato)
@@ -165,20 +186,30 @@ def estandarizar_fechas(df, columna, formato_destino='ISO'):
             # Formato personalizado
             df_result[columna] = series_fecha.dt.strftime(formato_destino)
         
-        # Registrar éxito
-        log_operation(logger, "ESTANDARIZACION_EXITOSA", 
-                     f"Estandarización de fechas exitosa para columna {columna} a formato {formato_destino}")
+        log_audit(
+            usuario=usuario,
+            accion="ESTANDARIZACION_EXITOSA",
+            entidad="transformador",
+            id_entidad=columna,
+            detalles=f"Estandarización de fechas exitosa para columna {columna} a formato {formato_destino}",
+            id_sesion=id_sesion
+        )
         
     except Exception as e:
-        # Registrar error
-        log_operation(logger, "ERROR_ESTANDARIZACION", 
-                     f"Error al estandarizar fechas en columna {columna}: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_ESTANDARIZACION",
+            entidad="transformador",
+            id_entidad=columna,
+            detalles=f"Error al estandarizar fechas en columna {columna}: {str(e)}",
+            id_sesion=id_sesion
+        )
         raise
         
     return df_result
 
 
-def convertir_unidades(df, columna, unidad_destino, unidad_origen=None):
+def convertir_unidades(df, columna, unidad_destino, id_sesion, usuario, unidad_origen=None):
     """
     Convierte valores de una columna a una unidad de medida estándar.
     
@@ -186,6 +217,8 @@ def convertir_unidades(df, columna, unidad_destino, unidad_origen=None):
         df (pd.DataFrame): DataFrame a transformar
         columna (str): Nombre de la columna con unidades
         unidad_destino (str): Unidad de medida destino
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         unidad_origen (str, optional): Unidad de origen (si no se proporciona, se intenta detectar)
     
     Returns:
@@ -196,9 +229,14 @@ def convertir_unidades(df, columna, unidad_destino, unidad_origen=None):
     
     df_result = df.copy()
     
-    # Registrar inicio de la transformación
-    log_operation(logger, "INICIO_CONVERSION", 
-                 f"Iniciando conversión de unidades en columna {columna} a {unidad_destino}")
+    log_audit(
+        usuario=usuario,
+        accion="INICIO_CONVERSION",
+        entidad="transformador",
+        id_entidad=columna,
+        detalles=f"Iniciando conversión de unidades en columna {columna} a {unidad_destino}",
+        id_sesion=id_sesion
+    )
     
     # Diccionario de factores de conversión para unidades comunes
     # Estructura: {(unidad_origen, unidad_destino): factor}
@@ -300,26 +338,38 @@ def convertir_unidades(df, columna, unidad_destino, unidad_origen=None):
             # Formatear con la nueva unidad
             df_result[columna] = valores_convertidos.astype(str) + ' ' + unidad_destino
             
-            # Registrar éxito
-            log_operation(logger, "CONVERSION_EXITOSA", 
-                         f"Conversión de unidades exitosa para columna {columna} de {unidad_origen} a {unidad_destino}")
+            log_audit(
+                usuario=usuario,
+                accion="CONVERSION_EXITOSA",
+                entidad="transformador",
+                id_entidad=columna,
+                detalles=f"Conversión de unidades exitosa para columna {columna} de {unidad_origen} a {unidad_destino}",
+                id_sesion=id_sesion
+            )
         else:
             raise ValueError(f"No hay factor de conversión definido para {unidad_origen} a {unidad_destino}")
             
     except Exception as e:
-        # Registrar error
-        log_operation(logger, "ERROR_CONVERSION", 
-                     f"Error al convertir unidades en columna {columna}: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_CONVERSION",
+            entidad="transformador",
+            id_entidad=columna,
+            detalles=f"Error al convertir unidades en columna {columna}: {str(e)}",
+            id_sesion=id_sesion
+        )
         raise
         
     return df_result
 
-def extraer_variables_fecha(df, columna, variables=None):
+def extraer_variables_fecha(df, columna, id_sesion, usuario, variables=None):
     """
     Extrae variables derivadas de una columna de fecha: año, mes, día, día_semana, día_año, semana, etc.
     Args:
         df (pd.DataFrame): DataFrame de entrada
         columna (str): Nombre de la columna de fecha
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         variables (list, opcional): Lista de variables a extraer. Si None, extrae todas.
     Returns:
         pd.DataFrame: DataFrame con nuevas columnas agregadas
@@ -327,14 +377,12 @@ def extraer_variables_fecha(df, columna, variables=None):
     if columna not in df.columns:
         raise ValueError(f"La columna {columna} no existe en el DataFrame")
     df_result = df.copy()
-    # Convertir a datetime si es necesario
     fechas = pd.to_datetime(df_result[columna], errors='coerce')
-    # Variables posibles
     todas = {
         'anio': fechas.dt.year,
         'mes': fechas.dt.month,
         'dia': fechas.dt.day,
-        'dia_semana': fechas.dt.weekday,  # 0=lunes
+        'dia_semana': fechas.dt.weekday,
         'nombre_dia': fechas.dt.day_name(),
         'nombre_mes': fechas.dt.month_name(),
         'dia_anio': fechas.dt.dayofyear,
@@ -347,5 +395,12 @@ def extraer_variables_fecha(df, columna, variables=None):
     for var in variables:
         if var in todas:
             df_result[f"{columna}_{var}"] = todas[var]
-    log_operation(logger, "EXTRACCION_FECHA", f"Extraídas variables {variables} de la columna {columna}")
+    log_audit(
+        usuario=usuario,
+        accion="EXTRACCION_FECHA",
+        entidad="transformador",
+        id_entidad=columna,
+        detalles=f"Extraídas variables {variables} de la columna {columna}",
+        id_sesion=id_sesion
+    )
     return df_result

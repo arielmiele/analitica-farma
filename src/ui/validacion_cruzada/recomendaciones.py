@@ -7,12 +7,12 @@ import streamlit as st
 from src.modelos.recomendador import generar_recomendaciones_completas
 
 
-def mostrar_recomendaciones_mejora(diagnostico, modelo, tipo_problema):
+def mostrar_recomendaciones_mejora(diagnostico, modelo, tipo_problema, id_sesion, usuario):
     """Muestra recomendaciones específicas para mejorar el modelo."""
     st.subheader("💡 Recomendaciones para Mejora")
     
     # Generar todas las recomendaciones usando la capa de modelos
-    recomendaciones_completas = generar_recomendaciones_completas(diagnostico, modelo, tipo_problema)
+    recomendaciones_completas = generar_recomendaciones_completas(diagnostico, modelo, tipo_problema, id_sesion, usuario)
     
     # Verificar si hay error
     if 'error' in recomendaciones_completas:

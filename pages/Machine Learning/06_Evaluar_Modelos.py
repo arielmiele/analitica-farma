@@ -32,11 +32,10 @@ from src.modelos.visualizador import (
 from src.modelos.modelo_serializer import deserializar_modelos_benchmarking
 from src.modelos.diagnostico_modelo import diagnosticar_objetos_modelo
 from src.state.session_manager import SessionManager
-from src.audit.logger import Logger
+from src.audit.logger import log_audit
 
-# Inicializar gestor de sesión y logger
+# Inicializar gestor de sesión
 session = SessionManager()
-logger = Logger("Evaluar_Modelos")
 
 def main():
     st.title("📊 Evaluación Detallada de Modelos")
@@ -57,13 +56,21 @@ def main():
         
         # Si se necesita deserialización, aplicarla
         if necesita_deserializacion:
-            resultados_benchmarking = deserializar_modelos_benchmarking(resultados_benchmarking)
+            resultados_benchmarking = deserializar_modelos_benchmarking(
+                resultados_benchmarking,
+                usuario=session.obtener_estado("usuario_id", "sistema"),
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+            )
             session.guardar_estado("resultados_benchmarking", resultados_benchmarking)
             st.success("✅ Modelos deserializados automáticamente")
         
         # Mostrar diagnóstico de objetos modelo (debugging)
         with st.expander("📋 Diagnóstico de modelos", expanded=False):
-            diagnosticar_objetos_modelo(resultados_benchmarking)
+            diagnosticar_objetos_modelo(
+                resultados_benchmarking,
+                usuario=session.obtener_estado("usuario_id", "sistema"),
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+            )
             st.info("Si los objetos modelo no están disponibles, intente ejecutar un nuevo benchmarking o cargar uno existente.")
     
     if not resultados_benchmarking:
@@ -72,7 +79,12 @@ def main():
         
         # Mostrar benchmarkings anteriores si existen
         try:
-            benchmarkings_previos = obtener_ultimos_benchmarkings(limite=5)
+            benchmarkings_previos = obtener_ultimos_benchmarkings(
+                limite=5,
+                id_usuario=session.obtener_estado("usuario_id", "sistema"),
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                usuario=session.obtener_estado("usuario_id", "sistema")
+            )
             if benchmarkings_previos:
                 st.subheader("📜 Benchmarkings anteriores")
                 
@@ -97,10 +109,13 @@ def main():
                         from src.modelos.entrenador import obtener_benchmarking_por_id
                         
                         # Registrar en el log
-                        logger.log_evento(
+                        log_audit(
+                            session.obtener_estado("usuario_id", "sistema"),
                             "CARGAR_BENCHMARKING",
+                            "Evaluar_Modelos",
+                            selected_id,
                             f"Cargando benchmarking ID: {selected_id}",
-                            "Evaluar_Modelos"
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                         )
                         
                         # Verificar que selected_id no sea None antes de convertirlo
@@ -110,7 +125,11 @@ def main():
                             
                             # Deserializar explícitamente para asegurar que los objetos modelo estén disponibles
                             if benchmarking:
-                                benchmarking = deserializar_modelos_benchmarking(benchmarking)
+                                benchmarking = deserializar_modelos_benchmarking(
+                                    benchmarking,
+                                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                                )
                                 st.success("✅ Modelos deserializados correctamente")
                         else:
                             st.error("❌ ID de benchmarking no válido.")
@@ -122,18 +141,24 @@ def main():
                             st.success(f"✅ Benchmarking ID {selected_id} cargado correctamente.")
                             
                             # Verificar si los objetos modelo están disponibles
-                            diagnosticar_objetos_modelo(benchmarking)
+                            diagnosticar_objetos_modelo(
+                                benchmarking,
+                                usuario=session.obtener_estado("usuario_id", "sistema"),
+                                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                            )
                             
                             st.rerun()
                         else:
                             st.error("❌ No se pudo cargar el benchmarking seleccionado.")
                     except Exception as error:
                         st.error(f"❌ Error al cargar benchmarking: {str(error)}")
-                        logger.log_evento(
+                        log_audit(
+                            session.obtener_estado("usuario_id", "sistema"),
                             "ERROR_CARGAR_BENCHMARKING",
-                            f"Error al cargar benchmarking ID {selected_id}: {str(error)}",
                             "Evaluar_Modelos",
-                            tipo="error"
+                            selected_id,
+                            f"Error al cargar benchmarking ID {selected_id}: {str(error)}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                         )
             else:
                 st.info("No hay benchmarkings previos disponibles.")
@@ -367,11 +392,13 @@ def main():
                         
                     except Exception as e:
                         st.error(f"Error al generar visualizaciones: {str(e)}")
-                        logger.log_evento(
+                        log_audit(
+                            session.obtener_estado("usuario_id", "sistema"),
                             "ERROR_VISUALIZACION",
-                            f"Error al generar visualizaciones para {modelo['nombre']}: {str(e)}",
                             "Evaluar_Modelos",
-                            tipo="error"
+                            modelo['nombre'] if modelo else "N/A",
+                            f"Error al generar visualizaciones para {modelo['nombre'] if modelo else 'N/A'}: {str(e)}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                         )
                         return
                     
@@ -408,7 +435,9 @@ def main():
                                     y_pred, 
                                     clases=[str(c) for c in clases],  # Convertir a lista de strings
                                     normalizar=opciones_norm[tipo_norm],
-                                    titulo=f"Matriz de Confusión - {modelo['nombre']}"
+                                    titulo=f"Matriz de Confusión - {modelo['nombre']}",
+                                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                                    usuario=session.obtener_estado("usuario_id", "sistema")
                                 )
                                 
                                 st.pyplot(matriz_confusion_fig)
@@ -443,7 +472,9 @@ def main():
                                 y_prob, 
                                 clases=[str(c) for c in clases],  # Convertir a lista de strings
                                 multi_clase=es_multiclase,
-                                titulo=f"Curva ROC - {modelo['nombre']}"
+                                titulo=f"Curva ROC - {modelo['nombre']}",
+                                id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                                usuario=session.obtener_estado("usuario_id", "sistema")
                             )
                                 
                             st.pyplot(roc_fig)
@@ -482,7 +513,9 @@ def main():
                             y_prob, 
                             clases=[str(c) for c in clases],  # Convertir a lista de strings
                             multi_clase=es_multiclase,
-                            titulo=f"Curva Precision-Recall - {modelo['nombre']}"
+                            titulo=f"Curva Precision-Recall - {modelo['nombre']}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                            usuario=session.obtener_estado("usuario_id", "sistema")
                         )
                         
                         st.pyplot(pr_fig)
@@ -523,7 +556,9 @@ def main():
                                     modelos_dict,
                                     X_test,
                                     y_test,
-                                    titulo="Comparación de Modelos - Curva ROC"
+                                    titulo="Comparación de Modelos - Curva ROC",
+                                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                                    usuario=session.obtener_estado("usuario_id", "sistema")
                                 )
                                 
                                 st.pyplot(comp_fig)
@@ -731,7 +766,9 @@ def main():
                                     residuos_fig = generar_grafico_residuos(
                                         y_test, 
                                         y_pred, 
-                                        titulo=f"Análisis de Residuos - {modelo['nombre']}"
+                                        titulo=f"Análisis de Residuos - {modelo['nombre']}",
+                                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                                        usuario=session.obtener_estado("usuario_id", "sistema")
                                     )
                                     
                                     st.pyplot(residuos_fig)
@@ -759,11 +796,13 @@ def main():
                                         st.markdown(interpretacion)
                                     except Exception as e:
                                         st.error(f"Error al calcular residuos: {str(e)}")
-                                        logger.log_evento(
+                                        log_audit(
+                                            session.obtener_estado("usuario_id", "sistema"),
                                             "ERROR_CALCULO_RESIDUOS",
-                                            f"Error al calcular residuos: {str(e)}",
                                             "Evaluar_Modelos",
-                                            tipo="error"
+                                            modelo['nombre'] if modelo else "N/A",
+                                            f"Error al calcular residuos: {str(e)}",
+                                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                                         )
                         
                         # TAB 2: Comparación de Distribuciones
@@ -774,7 +813,9 @@ def main():
                                     dist_fig = comparar_distribuciones(
                                         y_test, 
                                         y_pred, 
-                                        titulo=f"Comparación de Distribuciones - {modelo['nombre']}"
+                                        titulo=f"Comparación de Distribuciones - {modelo['nombre']}",
+                                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                                        usuario=session.obtener_estado("usuario_id", "sistema")
                                     )
                                     
                                     st.pyplot(dist_fig)
@@ -791,11 +832,13 @@ def main():
                                     )
                                 except Exception as e:
                                     st.error(f"Error al generar visualización de distribuciones: {str(e)}")
-                                    logger.log_evento(
+                                    log_audit(
+                                        session.obtener_estado("usuario_id", "sistema"),
                                         "ERROR_VISUALIZACIONES",
-                                        f"Error al generar visualización de distribuciones: {str(e)}",
                                         "Evaluar_Modelos",
-                                        tipo="error"
+                                        modelo['nombre'] if modelo else "N/A",
+                                        f"Error al generar visualización de distribuciones: {str(e)}",
+                                        id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                                     )
                             else:
                                 st.warning("No hay datos suficientes para generar la comparación de distribuciones.")
@@ -870,11 +913,13 @@ def main():
                                         
                                     except Exception as e:
                                         st.error(f"Error al comparar modelos: {str(e)}")
-                                        logger.log_evento(
+                                        log_audit(
+                                            session.obtener_estado("usuario_id", "sistema"),
                                             "ERROR_COMPARACION_MODELOS",
-                                            f"Error al comparar modelos: {str(e)}",
                                             "Evaluar_Modelos",
-                                            tipo="error"
+                                            modelo['nombre'] if modelo else "N/A",
+                                            f"Error al comparar modelos: {str(e)}",
+                                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                                         )
                                 else:
                                     st.warning("No se pudieron cargar los modelos seleccionados para la comparación.")
@@ -883,11 +928,13 @@ def main():
                     
                     except Exception as e:
                         st.error(f"Error al generar visualizaciones: {str(e)}")
-                        logger.log_evento(
+                        log_audit(
+                            session.obtener_estado("usuario_id", "sistema"),
                             "ERROR_VISUALIZACION",
-                            f"Error al generar visualizaciones para {modelo['nombre']}: {str(e)}",
                             "Evaluar_Modelos",
-                            tipo="error"
+                            modelo['nombre'] if modelo else "N/A",
+                            f"Error al generar visualizaciones para {modelo['nombre'] if modelo else 'N/A'}: {str(e)}",
+                            id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                         )
                 else:
                     st.info("""

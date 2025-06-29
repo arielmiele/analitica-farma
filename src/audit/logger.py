@@ -1,35 +1,28 @@
 """
 Módulo para configurar y gestionar el logging de la aplicación.
-Proporciona una forma unificada de registro en la base de datos SQLite
+Proporciona una forma unificada de registro en la base de datos Snowflake
 para cumplir con requisitos de auditoría y trazabilidad.
 """
 import logging
-import os
-import sqlite3
 from datetime import datetime
 import traceback
 import sys
+from src.snowflake.snowflake_conn import get_native_snowflake_connection
 
 
-class SQLiteHandler(logging.Handler):
+class SnowflakeHandler(logging.Handler):
     """
-    Handler personalizado que guarda los logs en la tabla de auditoría de SQLite.
+    Handler personalizado que guarda los logs en la tabla de auditoría de Snowflake.
     """
-    def __init__(self, db_path, id_usuario=1):
-        """
-        Inicializa el handler con la ruta a la base de datos.
-        
-        Args:
-            db_path (str): Ruta a la base de datos SQLite
-            id_usuario (int): ID del usuario para registrar en la auditoría
-        """
+    def __init__(self, usuario="", entidad="", id_entidad=""):
         super().__init__()
-        self.db_path = db_path
-        self.id_usuario = id_usuario
-    
+        self.usuario = usuario
+        self.entidad = entidad
+        self.id_entidad = id_entidad
+
     def emit(self, record):
         """
-        Guarda el registro de log en la tabla de auditoría.
+        Guarda el registro de log en la tabla de auditoría de Snowflake.
         
         Args:
             record (LogRecord): Registro de log a guardar
@@ -39,12 +32,11 @@ class SQLiteHandler(logging.Handler):
             message = self.format(record)
             
             # Determinar el tipo de acción según el nivel del log
+            accion = "INFO"
             if record.levelno >= logging.ERROR:
                 accion = "ERROR"
             elif record.levelno >= logging.WARNING:
                 accion = "ADVERTENCIA"
-            else:
-                accion = "INFO"
             
             # Si el mensaje tiene formato específico [TIPO] [STATUS], extraer la acción
             if "[" in message and "]" in message:
@@ -52,51 +44,48 @@ class SQLiteHandler(logging.Handler):
                 if len(parts) > 1:
                     accion = parts[0].strip("[")
             
-            # Conectar a la base de datos
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
+            # Conectar a Snowflake y guardar el log
+            conn = get_native_snowflake_connection()
+            cur = conn.cursor()
             
-            # Insertar el log en la tabla de auditoría
-            cursor.execute("""
-                INSERT INTO auditoria (id_usuario, accion, descripcion, fecha)
-                VALUES (?, ?, ?, ?)
+            cur.execute("""
+                INSERT INTO AUDITORIA (USUARIO, ACCION, ENTIDAD, ID_ENTIDAD, DETALLES, FECHA)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """, (
-                self.id_usuario,
+                self.usuario,
                 accion,
+                self.entidad,
+                self.id_entidad,
                 message,
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             ))
             
-            # Confirmar y cerrar
             conn.commit()
+            cur.close()
             conn.close()
         
         except Exception as e:
             # En caso de error, intentar escribir a stderr como fallback
             formatted_message = self.format(record)
-            sys.stderr.write(f"Error al guardar log en SQLite: {str(e)}\n")
+            sys.stderr.write(f"Error al guardar log en Snowflake: {str(e)}\n")
             sys.stderr.write(f"Mensaje original: {formatted_message}\n")
             traceback.print_exc(file=sys.stderr)
 
 
-def setup_logger(logger_name, log_level=logging.INFO, id_usuario=1, db_path=None):
+def setup_logger(logger_name, log_level=logging.INFO, usuario="", entidad="", id_entidad=""):
     """
-    Configura y devuelve un logger con almacenamiento en SQLite.
+    Configura y devuelve un logger con almacenamiento en Snowflake.
     
     Args:
         logger_name (str): Nombre del logger
         log_level (int): Nivel de logging (default: logging.INFO)
-        id_usuario (int): ID del usuario para los registros de auditoría
-        db_path (str): Ruta a la base de datos SQLite (opcional)
+        usuario (str): Usuario para los registros de auditoría
+        entidad (str): Entidad afectada por la acción
+        id_entidad (str): ID de la entidad afectada
     
     Returns:
         logging.Logger: Logger configurado
     """
-    # Determinar la ruta de la base de datos
-    if db_path is None:
-        # Obtener la ruta relativa a la raíz del proyecto
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'analitica_farma.db')
-    
     # Configurar el logger
     logger = logging.getLogger(logger_name)
     logger.setLevel(log_level)
@@ -109,10 +98,10 @@ def setup_logger(logger_name, log_level=logging.INFO, id_usuario=1, db_path=None
     # Crear un formatter para los logs
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
-    # Configurar el handler para SQLite
-    sqlite_handler = SQLiteHandler(db_path, id_usuario)
-    sqlite_handler.setFormatter(formatter)
-    logger.addHandler(sqlite_handler)
+    # Configurar el handler para Snowflake
+    snowflake_handler = SnowflakeHandler(usuario, entidad, id_entidad)
+    snowflake_handler.setFormatter(formatter)
+    logger.addHandler(snowflake_handler)
     
     # Configurar el handler para consola (desarrollo/depuración)
     console_handler = logging.StreamHandler()
@@ -122,179 +111,42 @@ def setup_logger(logger_name, log_level=logging.INFO, id_usuario=1, db_path=None
     return logger
 
 
-def log_operation(logger, operation_type, details, success=True, id_usuario=1):
+def log_audit(usuario, accion, entidad, id_entidad, detalles, id_sesion=None, logger_name="audit"):  # logger_name opcional para flexibilidad
     """
-    Registra una operación en el log con un formato estandarizado.
+    Registra una acción directamente en la tabla de auditoría de Snowflake y en el logger estándar.
     
     Args:
-        logger (logging.Logger): Logger a utilizar
-        operation_type (str): Tipo de operación (carga, transformación, etc.)
-        details (str): Detalles de la operación
-        success (bool): Indica si la operación fue exitosa
-        id_usuario (int): ID del usuario que realiza la operación
-    """
-    # Actualizar el ID de usuario en el handler de SQLite
-    for handler in logger.handlers:
-        if isinstance(handler, SQLiteHandler):
-            handler.id_usuario = id_usuario
-    
-    status = "ÉXITO" if success else "ERROR"
-    message = f"[{operation_type}] [{status}] {details}"
-    
-    if success:
-        logger.info(message)
-    else:
-        logger.error(message)
-
-
-def log_audit(usuario_id, accion, recurso, detalles="", db_path=None):
-    """
-    Registra una acción directamente en la tabla de auditoría.
-    
-    Args:
-        usuario_id (int): ID del usuario que realizó la acción
+        usuario (str): Usuario que realizó la acción
         accion (str): Acción realizada (ej: CARGA_DATOS, TRANSFORMACION, LOGIN)
-        recurso (str): Recurso afectado (ej: nombre del dataset, modelo, etc.)
+        entidad (str): Entidad afectada (ej: nombre del dataset, modelo, etc.)
+        id_entidad (str): ID de la entidad afectada
         detalles (str): Detalles adicionales
-        db_path (str): Ruta a la base de datos SQLite (opcional)
+        id_sesion (str, opcional): ID de la sesión activa
+        logger_name (str): Nombre del logger a usar para consola (por defecto 'audit')
     """
     try:
-        # Determinar la ruta de la base de datos
-        if db_path is None:
-            db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'analitica_farma.db')
-        
-        # Crear el mensaje completo
-        mensaje = f"RECURSO: {recurso}"
-        if detalles:
-            mensaje += f" | DETALLES: {detalles}"
-        
         # Insertar directamente en la base de datos
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO auditoria (id_usuario, accion, descripcion, fecha)
-            VALUES (?, ?, ?, ?)
+        conn = get_native_snowflake_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO AUDITORIA (USUARIO, ACCION, ENTIDAD, ID_ENTIDAD, DETALLES, FECHA, ID_SESION)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
-            usuario_id,
+            usuario,
             accion,
-            mensaje,
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            entidad,
+            id_entidad,
+            detalles,
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            id_sesion
         ))
-        
         conn.commit()
+        cur.close()
         conn.close()
-        
-        # También mostrar en consola para desarrollo
-        print(f"[AUDIT] Usuario {usuario_id} | {accion} | {mensaje}")
-        
+        # Loguear en consola usando el logger estándar
+        logger = logging.getLogger(logger_name)
+        logger.info(f"[AUDIT] Usuario {usuario} | {accion} | {entidad} | {id_entidad} | {detalles} | Sesion: {id_sesion}")
     except Exception as e:
-        print(f"Error al registrar auditoría: {str(e)}")
+        logger = logging.getLogger(logger_name)
+        logger.error(f"Error al registrar auditoría en Snowflake: {str(e)} | Usuario: {usuario} | Acción: {accion} | Entidad: {entidad} | ID: {id_entidad} | Detalles: {detalles} | Sesion: {id_sesion}")
         traceback.print_exc()
-
-
-def obtener_logs_auditoria(desde=None, hasta=None, usuario_id=None, accion=None, db_path=None):
-    """
-    Obtiene los logs de auditoría filtrados por diversos criterios.
-    
-    Args:
-        desde (str): Fecha de inicio (formato: 'YYYY-MM-DD')
-        hasta (str): Fecha de fin (formato: 'YYYY-MM-DD')
-        usuario_id (int): ID del usuario para filtrar
-        accion (str): Tipo de acción para filtrar
-        db_path (str): Ruta a la base de datos SQLite (opcional)
-    
-    Returns:
-        list: Lista de diccionarios con los logs de auditoría
-    """
-    try:
-        # Determinar la ruta de la base de datos
-        if db_path is None:
-            db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'analitica_farma.db')
-        
-        # Construir la consulta SQL con los filtros
-        query = """
-            SELECT a.id_log, a.id_usuario, u.nombre, a.accion, a.descripcion, a.fecha
-            FROM auditoria a
-            JOIN usuarios u ON a.id_usuario = u.id_usuario
-            WHERE 1=1
-        """
-        params = []
-        
-        if desde:
-            query += " AND fecha >= ?"
-            params.append(desde)
-        
-        if hasta:
-            query += " AND fecha <= ?"
-            params.append(hasta)
-        
-        if usuario_id:
-            query += " AND a.id_usuario = ?"
-            params.append(usuario_id)
-        
-        if accion:
-            query += " AND accion = ?"
-            params.append(accion)
-        
-        query += " ORDER BY fecha DESC"
-        
-        # Ejecutar la consulta
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row  # Para obtener resultados como diccionarios
-        cursor = conn.cursor()
-        
-        cursor.execute(query, params)
-        logs = [dict(row) for row in cursor.fetchall()]
-        
-        conn.close()
-        
-        return logs
-        
-    except Exception as e:
-        print(f"Error al obtener logs de auditoría: {str(e)}")
-        traceback.print_exc()
-        return []
-
-
-def update_user_id(logger, id_usuario):
-    """
-    Actualiza el ID de usuario en todos los handlers SQLite de un logger.
-    
-    Args:
-        logger (logging.Logger): Logger a actualizar
-        id_usuario (int): Nuevo ID de usuario
-    """
-    for handler in logger.handlers:
-        if isinstance(handler, SQLiteHandler):
-            handler.id_usuario = id_usuario
-    return logger
-
-
-class Logger:
-    """Clase para facilitar el logging en la aplicación."""
-    
-    def __init__(self, component_name, id_usuario=1):
-        self.component_name = component_name
-        self.id_usuario = id_usuario
-        self.logger = setup_logger(component_name, id_usuario=id_usuario)
-    
-    def log_evento(self, accion, descripcion, recurso="", tipo="info"):
-        """Registra un evento en el log de auditoría."""
-        mensaje = descripcion
-        if recurso:
-            mensaje = f"{recurso} | {mensaje}"
-        
-        if tipo == "error":
-            self.logger.error(f"[{accion}] {mensaje}")
-        elif tipo == "warning":
-            self.logger.warning(f"[{accion}] {mensaje}")
-        else:
-            self.logger.info(f"[{accion}] {mensaje}")
-        
-        log_audit(self.id_usuario, accion, recurso, descripcion)
-    
-    def set_usuario(self, id_usuario):
-        """Actualiza el ID del usuario para los logs."""
-        self.id_usuario = id_usuario
-        update_user_id(self.logger, id_usuario)

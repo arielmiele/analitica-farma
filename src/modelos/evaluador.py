@@ -5,24 +5,20 @@ import json
 import os
 import sqlite3
 from datetime import datetime
-import logging
 from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import traceback
-
-# Importar logger personalizado
-from src.audit.logger import Logger
-
-# Configuración del logger
-logger = logging.getLogger("evaluador")
+from src.audit.logger import log_audit
 
 def evaluar_modelo_detallado(
     id_benchmarking: int,
     nombre_modelo: str,
-    id_usuario: int = 1,
+    id_usuario: int,
+    id_sesion: str,
+    usuario: str,
     db_path: Optional[str] = None
 ) -> Dict:
     """
@@ -32,6 +28,8 @@ def evaluar_modelo_detallado(
         id_benchmarking: ID del benchmarking previamente ejecutado
         nombre_modelo: Nombre del modelo a evaluar en detalle
         id_usuario: ID del usuario que realiza la acción
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         db_path: Ruta a la base de datos
         
     Returns:
@@ -74,13 +72,15 @@ def evaluar_modelo_detallado(
         # Registrar en la tabla de auditoría
         cursor.execute("""
             INSERT INTO auditoria (
-                id_usuario, accion, descripcion, fecha
-            ) VALUES (?, ?, ?, ?)
+                id_usuario, accion, descripcion, fecha, id_sesion, usuario
+            ) VALUES (?, ?, ?, ?, ?, ?)
         """, (
             id_usuario,
             "EVALUACION_DETALLADA",
             f"Evaluación detallada del modelo {nombre_modelo}",
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            id_sesion,
+            usuario
         ))
         
         # Confirmar cambios
@@ -95,7 +95,14 @@ def evaluar_modelo_detallado(
         }
     
     except Exception as e:
-        logger.error(f"Error al evaluar modelo detallado: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_EVALUAR_MODELO_DETALLADO",
+            entidad="evaluador",
+            id_entidad=str(id_benchmarking),
+            detalles=f"Error al evaluar modelo detallado: {str(e)}",
+            id_sesion=id_sesion
+        )
         if conn:
             conn.rollback()
         return {"error": str(e)}
@@ -104,8 +111,10 @@ def evaluar_modelo_detallado(
             conn.close()
 
 def obtener_ultimos_benchmarkings(
-    limite: int = 5,
-    id_usuario: Optional[int] = None,
+    limite: int,
+    id_usuario: Optional[int],
+    id_sesion: str,
+    usuario: str,
     db_path: Optional[str] = None
 ) -> list:
     """
@@ -114,6 +123,8 @@ def obtener_ultimos_benchmarkings(
     Args:
         limite: Número máximo de resultados a devolver
         id_usuario: ID del usuario para filtrar
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         db_path: Ruta a la base de datos
         
     Returns:
@@ -166,7 +177,14 @@ def obtener_ultimos_benchmarkings(
         return resultados
     
     except Exception as e:
-        logger.error(f"Error al obtener últimos benchmarkings: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_OBTENER_BENCHMARKINGS",
+            entidad="evaluador",
+            id_entidad="N/A",
+            detalles=f"Error al obtener últimos benchmarkings: {str(e)}",
+            id_sesion=id_sesion
+        )
         return []
     finally:
         if conn:
@@ -175,6 +193,8 @@ def obtener_ultimos_benchmarkings(
 def generar_curvas_aprendizaje(
     id_benchmarking: int,
     nombre_modelo: str,
+    id_sesion: str,
+    usuario: str,
     db_path: Optional[str] = None
 ) -> Dict:
     """
@@ -183,6 +203,8 @@ def generar_curvas_aprendizaje(
     Args:
         id_benchmarking: ID del benchmarking
         nombre_modelo: Nombre del modelo
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         db_path: Ruta a la base de datos
         
     Returns:
@@ -265,7 +287,14 @@ def generar_curvas_aprendizaje(
         return resultados
         
     except Exception as e:
-        logger.error(f"Error generando curvas de aprendizaje: {str(e)}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_GENERAR_CURVAS_APRENDIZAJE",
+            entidad="evaluador",
+            id_entidad=str(id_benchmarking),
+            detalles=f"Error generando curvas de aprendizaje: {str(e)}",
+            id_sesion=id_sesion
+        )
         if conn:
             conn.close()
         return {
@@ -360,6 +389,8 @@ def generar_recomendaciones_validacion(diagnostico: Dict, metricas: Dict) -> lis
 
 def cargar_benchmarking_seleccionado(
     benchmarking_id: int,
+    id_sesion: str,
+    usuario: str,
     db_path: Optional[str] = None
 ) -> Dict:
     """
@@ -367,6 +398,8 @@ def cargar_benchmarking_seleccionado(
     
     Args:
         benchmarking_id: ID del benchmarking a cargar
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         db_path: Ruta a la base de datos (opcional)
         
     Returns:
@@ -399,10 +432,15 @@ def cargar_benchmarking_seleccionado(
             return benchmarking
         except json.JSONDecodeError as e:
             return {"error": f"Error al decodificar JSON del benchmarking: {str(e)}"}
-            
     except Exception as e:
-        error_detalle = traceback.format_exc()
-        logger.error(f"Error al cargar benchmarking: {str(e)}\n{error_detalle}")
+        log_audit(
+            usuario=usuario,
+            accion="ERROR_CARGAR_BENCHMARKING",
+            entidad="evaluador",
+            id_entidad=str(benchmarking_id),
+            detalles=f"Error al cargar benchmarking: {str(e)}\n{traceback.format_exc()}",
+            id_sesion=id_sesion
+        )
         return {"error": str(e)}
     finally:
         if conn:
@@ -454,7 +492,13 @@ def obtener_modelo_desde_benchmarking(
         return {"error": f"No se encontró el modelo {nombre_modelo}"}, False
         
     except Exception as e:
-        logger.error(f"Error al obtener modelo desde benchmarking: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_OBTENER_MODELO_BENCHMARKING",
+            "evaluador",
+            "N/A",
+            f"Error al obtener modelo desde benchmarking: {str(e)}"
+        )
         return {"error": str(e)}, False
 def generar_visualizaciones_clasificacion(
     modelo: Dict,
@@ -491,9 +535,8 @@ def generar_visualizaciones_clasificacion(
             # Obtener probabilidades (para curvas ROC)
             try:
                 y_prob = modelo['modelo_objeto'].predict_proba(X_test)
-            except Exception as e:
+            except Exception:
                 # Si el modelo no soporta predict_proba
-                logger.warning(f"El modelo no soporta predict_proba: {str(e)}")
                 y_prob = np.zeros((len(y_test), len(np.unique(y_test))))
         else:
             # Si no hay modelo, usar resultados pre-calculados o dummy data
@@ -510,21 +553,27 @@ def generar_visualizaciones_clasificacion(
                 y_pred, 
                 clases=[str(c) for c in clases],
                 normalizar=None,
-                titulo=f"Matriz de Confusión - {modelo['nombre']}"
+                titulo=f"Matriz de Confusión - {modelo['nombre']}",
+                id_sesion=resultados_benchmarking.get('id_sesion', 'N/A'),
+                usuario=resultados_benchmarking.get('usuario', 'sistema')
             )
         elif tipo_visualizacion == "curva_roc":
             return generar_curva_roc(
                 y_test, 
                 y_prob, 
                 clases=[str(c) for c in clases],
-                titulo=f"Curva ROC - {modelo['nombre']}"
+                titulo=f"Curva ROC - {modelo['nombre']}",
+                id_sesion=resultados_benchmarking.get('id_sesion', 'N/A'),
+                usuario=resultados_benchmarking.get('usuario', 'sistema')
             )
         elif tipo_visualizacion == "precision_recall":
             return generar_curva_precision_recall(
                 y_test, 
                 y_prob, 
                 clases=[str(c) for c in clases],
-                titulo=f"Curva Precision-Recall - {modelo['nombre']}"
+                titulo=f"Curva Precision-Recall - {modelo['nombre']}",
+                id_sesion=resultados_benchmarking.get('id_sesion', 'N/A'),
+                usuario=resultados_benchmarking.get('usuario', 'sistema')
             )
         elif tipo_visualizacion == "comparar_modelos":
             # Implementar comparación entre modelos
@@ -533,7 +582,9 @@ def generar_visualizaciones_clasificacion(
                 y_test, 
                 y_prob, 
                 clases=[str(c) for c in clases],
-                titulo=f"Curva ROC - {modelo['nombre']}"
+                titulo=f"Curva ROC - {modelo['nombre']}",
+                id_sesion=resultados_benchmarking.get('id_sesion', 'N/A'),
+                usuario=resultados_benchmarking.get('usuario', 'sistema')
             )
         else:
             # Crear un gráfico genérico si el tipo de visualización no es reconocido
@@ -547,6 +598,13 @@ def generar_visualizaciones_clasificacion(
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.text(0.5, 0.5, f"Error al generar visualización: {str(e)}", 
                ha='center', va='center', transform=ax.transAxes)
+        log_audit(
+            "sistema",
+            "ERROR_GENERAR_VISUALIZACION_CLASIFICACION",
+            "evaluador",
+            modelo.get('nombre', 'N/A'),
+            f"Error al generar visualización de clasificación: {str(e)}"
+        )
         return fig
 def generar_visualizaciones_regresion(
     modelo: Dict,
@@ -587,7 +645,9 @@ def generar_visualizaciones_regresion(
             return generar_grafico_residuos(
                 y_test, 
                 y_pred, 
-                titulo=f"Gráfico de Residuos - {modelo['nombre']}"
+                titulo=f"Gráfico de Residuos - {modelo['nombre']}",
+                id_sesion=resultados_benchmarking.get('id_sesion', 'N/A'),
+                usuario=resultados_benchmarking.get('usuario', 'sistema')
             )
         elif tipo_visualizacion == "valores_reales_vs_predichos":
             fig, ax = plt.subplots(figsize=(10, 6))
@@ -602,7 +662,9 @@ def generar_visualizaciones_regresion(
             return comparar_distribuciones(
                 y_test,
                 y_pred,
-                titulo=f"Comparación de Distribuciones - {modelo['nombre']}"
+                titulo=f"Comparación de Distribuciones - {modelo['nombre']}",
+                id_sesion=resultados_benchmarking.get('id_sesion', 'N/A'),
+                usuario=resultados_benchmarking.get('usuario', 'sistema')
             )
         else:
             # Crear un gráfico genérico si el tipo de visualización no es reconocido
@@ -616,7 +678,13 @@ def generar_visualizaciones_regresion(
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.text(0.5, 0.5, f"Error al generar visualización: {str(e)}", 
                ha='center', va='center', transform=ax.transAxes)
-        logger.error(f"Error en visualización de regresión: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_VISUALIZACION_REGRESION",
+            "evaluador",
+            modelo.get('nombre', 'N/A'),
+            f"Error en visualización de regresión: {str(e)}"
+        )
         return fig
 
 def diagnosticar_visualizaciones(resultados_benchmarking: Dict, modelo: Dict) -> Dict:
@@ -738,7 +806,13 @@ def generar_tabla_metricas(modelo: Dict, tipo_problema: str) -> pd.DataFrame:
         return df_metricas
     
     except Exception as e:
-        logger.error(f"Error al generar tabla de métricas: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_GENERAR_TABLA_METRICAS",
+            "evaluador",
+            "N/A",
+            f"Error al generar tabla de métricas: {str(e)}"
+        )
         # Devolver un dataframe vacío en caso de error
         return pd.DataFrame({'Métrica': [], 'Valor': []})
 def comparar_metricas_regresion(modelos_dict, X_test, y_test):
@@ -776,7 +850,13 @@ def comparar_metricas_regresion(modelos_dict, X_test, y_test):
         return metricas_comp
         
     except Exception as e:
-        logger.error(f"Error al comparar métricas de regresión: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_COMPARAR_METRICAS_REGRESION",
+            "evaluador",
+            "N/A",
+            f"Error al comparar métricas de regresión: {str(e)}"
+        )
         return pd.DataFrame()
 
 def calcular_matriz_confusion_detallada(y_test, y_pred, normalize=None):
@@ -796,7 +876,13 @@ def calcular_matriz_confusion_detallada(y_test, y_pred, normalize=None):
     try:
         return confusion_matrix(y_test, y_pred, normalize=normalize)
     except Exception as e:
-        logger.error(f"Error al calcular matriz de confusión: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_MATRIZ_CONFUSION",
+            "evaluador",
+            "N/A",
+            f"Error al calcular matriz de confusión: {str(e)}"
+        )
         raise
 
 
@@ -869,7 +955,13 @@ def calcular_curvas_roc_completas(y_test, y_prob, clases):
             }
             
     except Exception as e:
-        logger.error(f"Error al calcular curvas ROC: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_CURVAS_ROC",
+            "evaluador",
+            "N/A",
+            f"Error al calcular curvas ROC: {str(e)}"
+        )
         raise
 
 
@@ -924,7 +1016,13 @@ def calcular_metricas_clasificacion_completas(y_test, y_pred, y_prob):
         }
         
     except Exception as e:
-        logger.error(f"Error al calcular métricas de clasificación: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_METRICAS_CLASIFICACION",
+            "evaluador",
+            "N/A",
+            f"Error al calcular métricas de clasificación: {str(e)}"
+        )
         raise
 
 def comparar_modelos_regresion_completo(modelos_dict, X_test, y_test):
@@ -979,7 +1077,13 @@ def comparar_modelos_regresion_completo(modelos_dict, X_test, y_test):
         }
         
     except Exception as e:
-        logger.error(f"Error al comparar modelos de regresión completo: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_COMPARAR_MODELOS_REGRESION_COMPLETO",
+            "evaluador",
+            "N/A",
+            f"Error al comparar modelos de regresión completo: {str(e)}"
+        )
         return {
             'error': str(e),
             'predicciones_df': pd.DataFrame(),
@@ -1032,7 +1136,13 @@ def generar_visualizacion_comparacion_regresion(datos_comparacion):
         return fig
         
     except Exception as e:
-        logger.error(f"Error al generar visualización de comparación: {str(e)}")
+        log_audit(
+            "sistema",
+            "ERROR_VISUALIZACION_COMPARACION_REGRESION",
+            "evaluador",
+            "N/A",
+            f"Error al generar visualización de comparación: {str(e)}"
+        )
         # Crear figura de error
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.text(0.5, 0.5, f'Error al generar visualización: {str(e)}', 
@@ -1068,13 +1178,13 @@ def crear_dataframe_comparacion_regresion(modelos_dict, X_test, y_test):
         try:
             predicciones = info['modelo'].predict(X_test)
             pred_df[nombre] = predicciones
-        except Exception as e:
-            logger = Logger("Evaluador")
-            logger.log_evento(
-                "ERROR_PREDICCION_MODELO",
-                f"Error al generar predicciones para {nombre}: {str(e)}",
-                "crear_dataframe_comparacion_regresion",
-                tipo="error"
+        except Exception:
+            log_audit(
+                "sistema",
+                "ERROR_PREDICCION_MODELO_REGRESION",
+                "evaluador",
+                nombre,
+                f"Error al generar predicciones para {nombre}"
             )
             # Continuar con otros modelos
             continue
@@ -1093,7 +1203,6 @@ def generar_datos_grafico_comparacion_regresion(modelos_dict, X_test, y_test):
     Returns:
         dict: Datos estructurados para gráficos
     """
-    import numpy as np
     
     # Crear DataFrame de comparación
     pred_df = crear_dataframe_comparacion_regresion(modelos_dict, X_test, y_test)
@@ -1151,12 +1260,12 @@ def calcular_metricas_modelo_individual(modelo_objeto, X_test, y_test, nombre_mo
             'mae': round(mae, 4)
         }
     except Exception as e:
-        logger = Logger("Evaluador")
-        logger.log_evento(
-            "ERROR_CALCULO_METRICAS",
-            f"Error al calcular métricas para {nombre_modelo}: {str(e)}",
-            "calcular_metricas_modelo_individual",
-            tipo="error"
+        log_audit(
+            "sistema",
+            "ERROR_METRICAS_MODELO_INDIVIDUAL",
+            "evaluador",
+            nombre_modelo,
+            f"Error al calcular métricas para {nombre_modelo}: {str(e)}"
         )
         return {
             'modelo': nombre_modelo,

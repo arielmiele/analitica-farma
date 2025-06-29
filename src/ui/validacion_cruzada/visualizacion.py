@@ -7,9 +7,10 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from src.audit.logger import log_audit
 
 
-def mostrar_resultados_analisis(resultados_curvas, modelo, resultados_benchmarking):
+def mostrar_resultados_analisis(resultados_curvas, modelo, resultados_benchmarking, usuario="sistema", id_sesion="sin_sesion"):
     """Muestra los resultados del análisis de validación."""
     
     # Verificar si hay error en los resultados
@@ -17,6 +18,14 @@ def mostrar_resultados_analisis(resultados_curvas, modelo, resultados_benchmarki
         st.error(f"❌ {resultados_curvas['error']}")
         if 'solucion' in resultados_curvas:
             st.info(f"💡 **Sugerencia:** {resultados_curvas['solucion']}")
+        log_audit(
+            usuario=usuario,
+            accion="VALIDACION_CRUZADA_ERROR",
+            entidad="visualizacion",
+            id_entidad=modelo.get('nombre', ''),
+            detalles=f"Error en validación cruzada: {resultados_curvas['error']}",
+            id_sesion=id_sesion
+        )
         return
     
     # Análisis de diagnóstico
@@ -25,6 +34,14 @@ def mostrar_resultados_analisis(resultados_curvas, modelo, resultados_benchmarki
     cv_results_completos = resultados_curvas.get('cv_results_completos', {})
     
     st.success("✅ Análisis de validación cruzada completado")
+    log_audit(
+        usuario=usuario,
+        accion="VALIDACION_CRUZADA_OK",
+        entidad="visualizacion",
+        id_entidad=modelo.get('nombre', ''),
+        detalles="Análisis de validación cruzada mostrado correctamente",
+        id_sesion=id_sesion
+    )
     
     # 1. Mostrar diagnóstico principal
     mostrar_diagnostico_principal(diagnostico, modelo['nombre'])
@@ -40,7 +57,13 @@ def mostrar_resultados_analisis(resultados_curvas, modelo, resultados_benchmarki
     
     # 5. Mostrar recomendaciones
     from .recomendaciones import mostrar_recomendaciones_mejora
-    mostrar_recomendaciones_mejora(diagnostico, modelo, resultados_benchmarking.get('tipo_problema', 'clasificacion'))
+    mostrar_recomendaciones_mejora(
+        diagnostico,
+        modelo,
+        resultados_benchmarking.get('tipo_problema', 'clasificacion'),
+        usuario=usuario,
+        id_sesion=id_sesion
+    )
 
 
 def mostrar_metricas_validacion(metricas, cv_scores, tipo_problema):

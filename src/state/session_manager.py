@@ -2,6 +2,8 @@ import streamlit as st
 from typing import Dict, Any
 import datetime
 import pandas as pd
+import uuid
+from src.snowflake.snowflake_conn import get_native_snowflake_connection
 
 class SessionManager:
     """
@@ -46,20 +48,17 @@ class SessionManager:
             "origen": None,
             "variable_objetivo": st.session_state.get('variable_objetivo', None),
             "tipo_problema": st.session_state.get('tipo_problema', ''),
-            # Usar la clave unificada 'variables_predictoras' y mantener compatibilidad con 'predictores'
             "num_predictores": len(st.session_state.get('variables_predictoras', st.session_state.get('predictores', [])))
         }
         # Añadir la lista de predictores para el sidebar (máxima compatibilidad)
         info["lista_predictores"] = st.session_state.get('variables_predictoras', st.session_state.get('predictores', []))
         
         # Procesar origen
-        origen = st.session_state.get('metodo_carga', 'Nuevo archivo')
-        if origen == 'existente':
-            info["origen"] = 'BD local'
-        elif origen == 'nuevo':
-            info["origen"] = 'CSV'
+        origen = st.session_state.get('metodo_carga', 'CSV')
+        if origen == 'existente' or origen == 'snowflake':
+            info["origen"] = 'Snowflake'
         else:
-            info["origen"] = origen
+            info["origen"] = 'CSV'
             
         # Procesar fecha
         upload_timestamp = st.session_state.get('upload_timestamp', '')
@@ -253,3 +252,30 @@ class SessionManager:
         for key in ["usuario_id", "usuario_nombre", "usuario_rol", "usuario_email", "logged_in"]:
             if key in st.session_state:
                 del st.session_state[key]
+    
+    @staticmethod
+    def crear_sesion(usuario_id: str) -> str:
+        """
+        Genera un ID de sesión único, lo registra en la tabla SESIONES de Snowflake y lo almacena en st.session_state.
+        
+        Args:
+            usuario_id (str): ID del usuario autenticado
+        
+        Returns:
+            str: ID de sesión generado
+        """
+        if "id_sesion" not in st.session_state:
+            id_sesion = str(uuid.uuid4())
+            st.session_state["id_sesion"] = id_sesion
+            # Registrar la sesión en Snowflake
+            conn = get_native_snowflake_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """INSERT INTO SESIONES (ID_SESION, USUARIO, FECHA_INICIO, ESTADO)
+                       VALUES (%s, %s, CURRENT_TIMESTAMP(), %s)""",
+                (id_sesion, usuario_id, 'ACTIVA')
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+        return st.session_state["id_sesion"]

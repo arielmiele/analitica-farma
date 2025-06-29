@@ -1,77 +1,113 @@
 import streamlit as st
 import sys
 import os
+from src.audit.logger import setup_logger, log_audit
 
 # Agregar el directorio src al path para poder importar los módulos
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Importar módulos de la aplicación
-from src.audit.logger import log_audit
 from src.state.session_manager import SessionManager
 from src.seguridad.autenticador import validar_usuario
 
-st.title("🔐 0. Inicio de Sesión y Acceso a Analítica Farma")
+# Configurar logger de auditoría para la página de login
+logger = setup_logger("login")
 
-st.write("""
-Bienvenido a la plataforma de análisis industrial farmacéutico.
+st.title("🔐 Inicio de Sesión y Acceso a Analítica Farma")
 
-Esta aplicación te permitirá realizar un análisis exhaustivo de datos farmacéuticos, desde la carga y validación de datos hasta la recomendación de modelos y generación de reportes.
+st.markdown("**Bienvenido a Analítica Farma**")
+st.info(
+    "Esta aplicación está diseñada para ayudar a empresas industriales, especialmente del sector farmacéutico, "
+    "a analizar, validar y transformar datos de producción, entrenar y comparar modelos de machine learning, "
+    "y generar reportes de manera segura y centralizada.\n\n"
+    "Podrás cargar datos desde archivos CSV o Snowflake, realizar limpieza y transformación, evaluar modelos, "
+    "obtener recomendaciones y exportar resultados, todo con trazabilidad y control de acceso empresarial."
+)
 
-**Flujo recomendado:**
-1. Cargar Datos
-2. Validar Datos
-3. Analizar Calidad
-4. Configurar Datos
-5. Entrenar y Evaluar Modelos
-6. Generar Reportes
-""")
+# Definir un ID de usuario especial para logs de sistema o anónimos
+USUARIO_SISTEMA = "sistema"
+USUARIO_ANONIMO = "anonimo"
 
-st.subheader("Opciones de acceso")
-
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("🧪 Acceso rápido (demo)", use_container_width=True, help="Acceso de desarrollo/pruebas. Persiste usuario demo."):
-            SessionManager.set_user(
-                usuario_id=1,
-                usuario_nombre="usuario",
-                usuario_rol="analista",
-                usuario_email="usuario@empresa.com"
-            )
-            # log_audit(1, "LOGIN", "Sistema", "Acceso rápido (demo)")
-            st.success("Acceso demo exitoso. Redirigiendo...")
-            st.rerun()
-    with col2:
-        with st.expander("🔑 Acceso con usuario/contraseña (Snowflake)", expanded=False):
-            st.markdown("""
-            <span style='color:#888'>Valida contra la tabla de usuarios en Snowflake.<br>Solo usuarios autorizados pueden acceder.</span>
-            """, unsafe_allow_html=True)
-            with st.form("login_form_snowflake", clear_on_submit=False):
-                usuario = st.text_input("Usuario", max_chars=50)
-                password = st.text_input("Contraseña", type="password", max_chars=50)
-                submitted = st.form_submit_button("Iniciar sesión")
-                if submitted:
-                    if not usuario or not password:
-                        st.warning("Por favor, completa usuario y contraseña.")
-                    else:
-                        user_data = validar_usuario(usuario, password)
-                        if user_data:
-                            SessionManager.set_user(
-                                usuario_id=user_data["id"],
-                                usuario_nombre=user_data["usuario"],
-                                usuario_rol=user_data["rol"],
-                                usuario_email=user_data["email"]
-                            )
-                            # log_audit(user_data["id"], "LOGIN", "Sistema", "Login exitoso Snowflake")
-                            st.success("Login exitoso. Redirigiendo...")
-                            st.rerun()
-                        else:
-                            # log_audit(0, "LOGIN_FAIL", "Sistema", f"Intento fallido usuario: {usuario}")
-                            st.error("Usuario o contraseña incorrectos, o usuario inactivo.")
-    with col3:
-        if st.button("🔒 Login SSO corporativo (Snowflake)", use_container_width=True, help="SSO corporativo vía Snowflake/AD."):
-            st.info("[Futuro] Aquí se integrará el login SSO corporativo.\n\nSe usará el proveedor de identidad de la empresa y luego se obtendrán los datos del usuario para SessionManager.set_user().")
+# Centrar el formulario usando columnas vacías a los lados
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.subheader("Acceso con usuario/contraseña (Snowflake)", divider="rainbow")
+    st.write("""Valida contra la tabla de usuarios en Snowflake. Solo usuarios autorizados pueden acceder.""")
+    with st.form("login_form_snowflake", clear_on_submit=False):
+        email = st.text_input("Email", max_chars=100)
+        password = st.text_input("Contraseña", type="password", max_chars=50)
+        submitted = st.form_submit_button("❄️ Iniciar sesión en Snowflake")
+        if submitted:
+            if not email or not password:
+                log_audit(
+                    usuario=USUARIO_ANONIMO,
+                    accion="LOGIN_VACIO",
+                    entidad="login_form",
+                    id_entidad="",
+                    detalles="Intento de login con campos vacíos.",
+                    id_sesion=SessionManager.obtener_estado("id_sesion", None)
+                )
+                st.warning("Por favor, completa email y contraseña.")
+            else:
+                user_data = validar_usuario(email, password)
+                if user_data:
+                    SessionManager.set_user(
+                        usuario_id=user_data["id"],
+                        usuario_nombre=user_data["usuario"],
+                        usuario_rol=user_data["rol"],
+                        usuario_email=user_data["email"]
+                    )
+                    # Crear y registrar la sesión en Snowflake
+                    SessionManager.crear_sesion(str(user_data["id"]))
+                    log_audit(
+                        usuario=str(user_data["id"]),
+                        accion="LOGIN_EXITO",
+                        entidad="USUARIO",
+                        id_entidad=str(user_data["id"]),
+                        detalles="Login exitoso.",
+                        id_sesion=SessionManager.obtener_estado("id_sesion", None)
+                    )
+                    st.success("Login exitoso. Redirigiendo...")
+                    st.rerun()
+                else:
+                    log_audit(
+                        usuario=USUARIO_ANONIMO,
+                        accion="LOGIN_FALLIDO",
+                        entidad="login_form",
+                        id_entidad="",
+                        detalles="Intento fallido de login. Email o contraseña incorrectos, o usuario inactivo.",
+                        id_sesion=SessionManager.obtener_estado("id_sesion", None)
+                    )
+                    st.error("Email o contraseña incorrectos, o usuario inactivo.")
+    st.markdown("---")
+    if st.button("🧪 Acceso rápido (demo)", use_container_width=True, help="Acceso de desarrollo/pruebas. Persiste usuario demo."):
+        SessionManager.set_user(
+            usuario_id=1,
+            usuario_nombre="usuario",
+            usuario_rol="analista",
+            usuario_email="usuario@empresa.com"
+        )
+        # Crear y registrar la sesión demo en Snowflake
+        SessionManager.crear_sesion("1")
+        log_audit(
+            usuario=str(USUARIO_SISTEMA),
+            accion="LOGIN_DEMO",
+            entidad="usuario",
+            id_entidad="1",
+            detalles="Acceso rápido (demo) exitoso para usuario demo.",
+            id_sesion=SessionManager.obtener_estado("id_sesion", None)
+        )
+        st.success("Acceso demo exitoso. Redirigiendo...")
+        st.rerun()
 
 # Redirección automática si ya está logueado
 if SessionManager.is_logged_in():
+    log_audit(
+        usuario=USUARIO_SISTEMA,
+        accion="LOGIN_REDIRECT",
+        entidad="login",
+        id_entidad="",
+        detalles="Usuario ya logueado, redirigiendo a carga de datos.",
+        id_sesion=SessionManager.obtener_estado("id_sesion", None)
+    )
     st.switch_page("pages/Datos/01_Cargar_Datos.py")

@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # Importar módulos de la aplicación
-from src.audit.logger import setup_logger, log_operation
+from src.audit.logger import log_audit
 from src.datos.validador import (
     validar_tipos_datos,
     validar_fechas
@@ -19,10 +19,6 @@ from src.datos.limpiador import (
     detectar_duplicados
 )
 from src.datos.formateador import persistir_dataframe
-
-# Configurar el logger
-usuario_id = st.session_state.get("usuario_id", 1)
-logger = setup_logger("validacion_datos", id_usuario=usuario_id)
 
 # Inicializar session_state para esta página
 if 'validacion_completa' not in st.session_state:
@@ -49,6 +45,8 @@ if 'df' not in st.session_state or st.session_state.df is None:
     if st.button("Ir a Cargar Datos", use_container_width=True):
         st.switch_page("pages/Datos/01_Cargar_Datos.py")
 else:
+    usuario = st.session_state.get("usuario_id", "sistema")
+    id_sesion = st.session_state.get("id_sesion", "sin_sesion")
     # === SECCIÓN 1: Información del dataset ===
     st.subheader("Información del dataset")
     st.success(f"Archivo: {st.session_state.filename}")
@@ -69,9 +67,9 @@ else:
         and st.session_state.df is not None
     ):
         with st.spinner("Validando datos automáticamente..."):
-            log_operation(logger, "INICIO_VALIDACION", f"Iniciando validación de datos para {st.session_state.filename}", id_usuario=usuario_id)
-            errores_tipo = validar_tipos_datos(st.session_state.df)
-            errores_fecha = validar_fechas(st.session_state.df)
+            log_audit(usuario=usuario, accion="INICIO_VALIDACION", entidad="validacion_datos", id_entidad=st.session_state.filename, detalles=f"Iniciando validación de datos para {st.session_state.filename}", id_sesion=id_sesion)
+            errores_tipo = validar_tipos_datos(st.session_state.df, usuario=usuario, id_sesion=id_sesion)
+            errores_fecha = validar_fechas(st.session_state.df, usuario=usuario, id_sesion=id_sesion)
             st.session_state.errores_tipo = errores_tipo
             st.session_state.errores_fecha = errores_fecha
             st.session_state.validacion_realizada = True
@@ -84,11 +82,11 @@ else:
         total_errores = len(st.session_state.errores_tipo) + len(st.session_state.errores_fecha)
         if total_errores == 0:
             st.success("✅ No se detectaron problemas en la estructura de los datos. La validación es correcta.")
-            log_operation(logger, "VALIDACION_EXITOSA", f"Validación completa sin errores para {st.session_state.filename}", id_usuario=usuario_id)
+            log_audit(usuario=st.session_state.get("usuario_id", "sistema"), accion="VALIDACION_EXITOSA", entidad="validacion_datos", id_entidad=st.session_state.filename, detalles=f"Validación completa sin errores para {st.session_state.filename}", id_sesion=st.session_state.get("id_sesion", "sin_sesion"))
             st.session_state.validacion_completa = True
         else:
             st.error(f"❌ Se detectaron {total_errores} problemas que requieren atención.")
-            log_operation(logger, "VALIDACION_ERRORES", f"Validación completada con {total_errores} errores para {st.session_state.filename}", id_usuario=usuario_id)
+            log_audit(usuario=st.session_state.get("usuario_id", "sistema"), accion="VALIDACION_ERRORES", entidad="validacion_datos", id_entidad=st.session_state.filename, detalles=f"Validación completada con {total_errores} errores para {st.session_state.filename}", id_sesion=st.session_state.get("id_sesion", "sin_sesion"))
         # Mostrar detalles de errores por tipo
         with st.expander("Problemas de tipos de datos", expanded=len(st.session_state.errores_tipo) > 0):
             if len(st.session_state.errores_tipo) == 0:
@@ -154,16 +152,30 @@ else:
                             columna = error['columna']
                             tipo_destino = error.get('opcion_seleccionada', 'str')
                             try:
-                                df_corregido = corregir_tipo_datos(df_corregido, columna, tipo_destino)
+                                df_corregido = corregir_tipo_datos(df_corregido, columna, tipo_destino, usuario=usuario, id_sesion=id_sesion)
                                 mensaje = f"Corregido tipo de dato en columna {columna} a {tipo_destino}"
                                 correcciones_aplicadas.append(mensaje)
-                                log_operation(logger, "CORRECCION_TIPO", mensaje, id_usuario=usuario_id)
+                                log_audit(
+                                    usuario=usuario,
+                                    accion="CORRECCION_TIPO",
+                                    entidad="validacion_datos",
+                                    id_entidad=st.session_state.filename,
+                                    detalles=mensaje,
+                                    id_sesion=id_sesion
+                                )
                             except Exception as e:
                                 st.error(f"Error al corregir tipo de dato en columna {columna}: {str(e)}")
-                                log_operation(logger, "ERROR_CORRECCION", f"Error al corregir tipo de {columna}: {str(e)}", id_usuario=usuario_id)
+                                log_audit(
+                                    usuario=usuario,
+                                    accion="ERROR_CORRECCION",
+                                    entidad="validacion_datos",
+                                    id_entidad=st.session_state.filename,
+                                    detalles=f"Error al corregir tipo de {columna}: {str(e)}",
+                                    id_sesion=id_sesion
+                                )
                     if correcciones_aplicadas:
                         # Persistir y mostrar mensaje
-                        resultado_persistencia = persistir_dataframe(df_corregido)
+                        resultado_persistencia = persistir_dataframe(df_corregido, usuario=usuario, id_sesion=id_sesion)
                         if resultado_persistencia['success']:
                             st.success(f"✅ Se aplicaron {len(correcciones_aplicadas)} correcciones con éxito. {resultado_persistencia['message']}")
                         else:
@@ -182,8 +194,15 @@ else:
     if 'duplicados_info' not in st.session_state or st.session_state.duplicados_info is None:
         with st.spinner("Analizando duplicados..."):
             columnas_seleccionadas = st.session_state.df.columns.tolist()
-            st.session_state.duplicados_info = detectar_duplicados(st.session_state.df, columnas_seleccionadas)
-            log_operation(logger, "DETECCION_DUPLICADOS", "Detección de duplicados en todas las columnas", id_usuario=usuario_id)
+            st.session_state.duplicados_info = detectar_duplicados(st.session_state.df, columnas_seleccionadas, usuario=usuario)
+            log_audit(
+                usuario=usuario,
+                accion="DETECCION_DUPLICADOS",
+                entidad="validacion_datos",
+                id_entidad=st.session_state.filename,
+                detalles="Detección de duplicados en todas las columnas",
+                id_sesion=id_sesion
+            )
     info = st.session_state.duplicados_info
     if info is not None and 'error' in info and info['error']:
         st.error(f"Error al detectar duplicados: {info['error']}")
@@ -217,10 +236,17 @@ else:
                 # Ejemplo: eliminar duplicados antes de pasar a la siguiente página
                 try:
                     df_sin_duplicados = st.session_state.df.drop_duplicates()
-                    resultado_persistencia = persistir_dataframe(df_sin_duplicados)
+                    resultado_persistencia = persistir_dataframe(df_sin_duplicados, usuario=usuario, id_sesion=id_sesion)
                     if resultado_persistencia['success']:
                         st.success(f"Registros duplicados eliminados. {resultado_persistencia['message']}")
-                        log_operation(logger, "ELIMINACION_DUPLICADOS", "Registros duplicados eliminados", id_usuario=usuario_id)
+                        log_audit(
+                            usuario=usuario,
+                            accion="ELIMINACION_DUPLICADOS",
+                            entidad="validacion_datos",
+                            id_entidad=st.session_state.filename,
+                            detalles="Registros duplicados eliminados",
+                            id_sesion=id_sesion
+                        )
                         st.session_state.df = df_sin_duplicados
                         st.session_state.duplicados_info = None
                         st.rerun()
@@ -261,11 +287,18 @@ else:
         if st.button("➕ Extraer variables derivadas", use_container_width=True):
             with st.spinner("Extrayendo variables derivadas de la fecha..."):
                 try:
-                    df_nuevo = extraer_variables_fecha(st.session_state.df, columna_seleccionada, variables_seleccionadas)
-                    resultado_persistencia = persistir_dataframe(df_nuevo)
+                    df_nuevo = extraer_variables_fecha(st.session_state.df, columna_seleccionada, variables_seleccionadas, usuario=usuario)
+                    resultado_persistencia = persistir_dataframe(df_nuevo, usuario=usuario, id_sesion=id_sesion)
                     if resultado_persistencia['success']:
                         st.success(f"Variables derivadas extraídas y agregadas al dataset: {', '.join(variables_seleccionadas)}. {resultado_persistencia['message']}")
-                        log_operation(logger, "EXTRACCION_FECHA_UI", f"Extraídas variables {variables_seleccionadas} de {columna_seleccionada}", id_usuario=usuario_id)
+                        log_audit(
+                            usuario=usuario,
+                            accion="EXTRACCION_FECHA_UI",
+                            entidad="validacion_datos",
+                            id_entidad=st.session_state.filename,
+                            detalles=f"Extraídas variables {variables_seleccionadas} de {columna_seleccionada}",
+                            id_sesion=id_sesion
+                        )
                         st.rerun()
                     else:
                         st.error(f"❌ Error al actualizar el DataFrame: {resultado_persistencia['message']}")

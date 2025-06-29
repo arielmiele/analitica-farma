@@ -1,12 +1,15 @@
 import pandas as pd
 from typing import List, Dict, Any, Tuple, Optional, Literal
+from src.audit.logger import log_audit
 
-def detectar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) -> Dict[str, Any]:
+def detectar_duplicados(df: pd.DataFrame, id_sesion: str, usuario: str, columnas: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Detecta registros duplicados en un DataFrame basado en columnas específicas.
     
     Args:
         df: DataFrame a analizar
+        id_sesion: ID de sesión para trazabilidad
+        usuario: Usuario que ejecuta la acción
         columnas: Lista de columnas para buscar duplicados. Si es None, usa todas las columnas.
     
     Returns:
@@ -24,6 +27,14 @@ def detectar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) 
         # Verificar que las columnas existan en el DataFrame
         columnas_existentes = [col for col in columnas if col in df.columns]
         if len(columnas_existentes) == 0:
+            log_audit(
+                accion="error_columnas_duplicados",
+                entidad="limpiador",
+                id_entidad=None,
+                detalles="No se encontraron las columnas especificadas en el DataFrame",
+                id_sesion=id_sesion,
+                usuario=usuario
+            )
             return {
                 'error': 'No se encontraron las columnas especificadas en el DataFrame',
                 'cantidad': 0,
@@ -48,6 +59,23 @@ def detectar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) 
             conteo_grupo = df.groupby(columnas_existentes).size().reset_index(name='conteo')
             # Filtrar solo los grupos con más de una ocurrencia
             grupos = conteo_grupo[conteo_grupo['conteo'] > 1].sort_values('conteo', ascending=False)
+            log_audit(
+                accion="duplicados_detectados",
+                entidad="limpiador",
+                id_entidad=None,
+                detalles=f"{cantidad_duplicados} duplicados detectados en columnas {columnas_existentes}",
+                id_sesion=id_sesion,
+                usuario=usuario
+            )
+        else:
+            log_audit(
+                accion="sin_duplicados",
+                entidad="limpiador",
+                id_entidad=None,
+                detalles=f"No se detectaron duplicados en columnas {columnas_existentes}",
+                id_sesion=id_sesion,
+                usuario=usuario
+            )
         
         return {
             'cantidad': cantidad_duplicados,
@@ -56,6 +84,14 @@ def detectar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) 
             'indices': indices_duplicados
         }
     except Exception as e:
+        log_audit(
+            accion="error_detectar_duplicados",
+            entidad="limpiador",
+            id_entidad=None,
+            detalles=f"Error al detectar duplicados: {str(e)}",
+            id_sesion=id_sesion,
+            usuario=usuario
+        )
         return {
             'error': str(e),
             'cantidad': 0,
@@ -64,12 +100,14 @@ def detectar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None) 
             'indices': []
         }
 
-def eliminar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None, keep: Literal['first', 'last', False] = 'first') -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def eliminar_duplicados(df: pd.DataFrame, id_sesion: str, usuario: str, columnas: Optional[List[str]] = None, keep: Literal['first', 'last', False] = 'first') -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Elimina registros duplicados del DataFrame basados en columnas específicas.
     
     Args:
         df: DataFrame a limpiar
+        id_sesion: ID de sesión para trazabilidad
+        usuario: Usuario que ejecuta la acción
         columnas: Lista de columnas para buscar duplicados. Si es None, usa todas las columnas.
         keep: Qué duplicados conservar ('first', 'last', False). Si es False, elimina todas las ocurrencias.
     
@@ -90,6 +128,14 @@ def eliminar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None, 
         # Verificar que las columnas existan en el DataFrame
         columnas_existentes = [col for col in columnas if col in df.columns]
         if len(columnas_existentes) == 0:
+            log_audit(
+                accion="error_columnas_eliminar_duplicados",
+                entidad="limpiador",
+                id_entidad=None,
+                detalles="No se encontraron las columnas especificadas en el DataFrame",
+                id_sesion=id_sesion,
+                usuario=usuario
+            )
             return df.copy(), {
                 'error': 'No se encontraron las columnas especificadas en el DataFrame',
                 'filas_antes': len(df),
@@ -109,6 +155,15 @@ def eliminar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None, 
         filas_eliminadas = filas_antes - filas_despues
         porcentaje_reduccion = (filas_eliminadas / filas_antes) * 100 if filas_antes > 0 else 0
         
+        log_audit(
+            accion="eliminar_duplicados",
+            entidad="limpiador",
+            id_entidad=None,
+            detalles=f"Eliminadas {filas_eliminadas} filas duplicadas en columnas {columnas_existentes} (estrategia: {keep})",
+            id_sesion=id_sesion,
+            usuario=usuario
+        )
+        
         return df_limpio, {
             'filas_antes': filas_antes,
             'filas_despues': filas_despues,
@@ -118,6 +173,14 @@ def eliminar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None, 
             'estrategia': keep
         }
     except Exception as e:
+        log_audit(
+            accion="error_eliminar_duplicados",
+            entidad="limpiador",
+            id_entidad=None,
+            detalles=f"Error al eliminar duplicados: {str(e)}",
+            id_sesion=id_sesion,
+            usuario=usuario
+        )
         return df.copy(), {
             'error': str(e),
             'filas_antes': len(df),
@@ -126,16 +189,16 @@ def eliminar_duplicados(df: pd.DataFrame, columnas: Optional[List[str]] = None, 
             'porcentaje_reduccion': 0.0
         }
 
-def fusionar_duplicados(df: pd.DataFrame, columnas: List[str], metodo: Optional[Dict[str, str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def fusionar_duplicados(df: pd.DataFrame, id_sesion: str, usuario: str, columnas: List[str], metodo: Optional[Dict[str, str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Fusiona registros duplicados aplicando diferentes métodos de agregación por columna.
     
     Args:
         df: DataFrame a procesar
+        id_sesion: ID de sesión para trazabilidad
+        usuario: Usuario que ejecuta la acción
         columnas: Lista de columnas que definen los grupos de duplicados
-        metodo: Diccionario donde las claves son nombres de columnas y los valores son 
-                métodos de agregación ('mean', 'sum', 'max', 'min', 'first', 'last', etc.)
-                Si una columna no está en el diccionario, se usa 'first' por defecto.
+        metodo: Diccionario donde las claves son nombres de columnas y los valores son métodos de agregación
     
     Returns:
         Tuple con:
@@ -145,6 +208,14 @@ def fusionar_duplicados(df: pd.DataFrame, columnas: List[str], metodo: Optional[
     try:
         # Si no se especifican columnas, usar todas
         if columnas is None or len(columnas) == 0:
+            log_audit(
+                accion="error_columnas_fusionar_duplicados",
+                entidad="limpiador",
+                id_entidad=None,
+                detalles="No se especificaron columnas para agrupar",
+                id_sesion=id_sesion,
+                usuario=usuario
+            )
             return df.copy(), {
                 'error': 'No se especificaron columnas para agrupar',
                 'filas_antes': len(df),
@@ -155,6 +226,14 @@ def fusionar_duplicados(df: pd.DataFrame, columnas: List[str], metodo: Optional[
         # Verificar que las columnas existan en el DataFrame
         columnas_existentes = [col for col in columnas if col in df.columns]
         if len(columnas_existentes) == 0:
+            log_audit(
+                accion="error_columnas_fusionar_duplicados",
+                entidad="limpiador",
+                id_entidad=None,
+                detalles="No se encontraron las columnas especificadas en el DataFrame",
+                id_sesion=id_sesion,
+                usuario=usuario
+            )
             return df.copy(), {
                 'error': 'No se encontraron las columnas especificadas en el DataFrame',
                 'filas_antes': len(df),
@@ -185,6 +264,15 @@ def fusionar_duplicados(df: pd.DataFrame, columnas: List[str], metodo: Optional[
         filas_despues = len(df_fusionado)
         grupos_fusionados = filas_antes - filas_despues
         
+        log_audit(
+            accion="fusionar_duplicados",
+            entidad="limpiador",
+            id_entidad=None,
+            detalles=f"Fusionados {grupos_fusionados} grupos de duplicados en columnas {columnas_existentes}",
+            id_sesion=id_sesion,
+            usuario=usuario
+        )
+        
         return df_fusionado, {
             'filas_antes': filas_antes,
             'filas_despues': filas_despues,
@@ -193,6 +281,14 @@ def fusionar_duplicados(df: pd.DataFrame, columnas: List[str], metodo: Optional[
             'metodos_fusion': metodo
         }
     except Exception as e:
+        log_audit(
+            accion="error_fusionar_duplicados",
+            entidad="limpiador",
+            id_entidad=None,
+            detalles=f"Error al fusionar duplicados: {str(e)}",
+            id_sesion=id_sesion,
+            usuario=usuario
+        )
         return df.copy(), {
             'error': str(e),
             'filas_antes': len(df),

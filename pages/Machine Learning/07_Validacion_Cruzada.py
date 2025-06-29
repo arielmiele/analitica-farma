@@ -29,11 +29,21 @@ from src.ui.validacion_cruzada.configuracion import (
 from src.ui.validacion_cruzada.analisis import (
     ejecutar_analisis_completo
 )
+from src.audit.logger import log_audit
 
 
 def main():
     """Función principal de la página."""
     st.title("🔬 Validación Cruzada y Detección de Overfitting")
+    # Log de acceso a la página
+    log_audit(
+        usuario=st.session_state.get("usuario_id", "sistema"),
+        accion="ACCESO_PAGINA",
+        entidad="validacion_cruzada",
+        id_entidad="",
+        detalles="Acceso a la página de Validación Cruzada",
+        id_sesion=st.session_state.get("id_sesion", "sin_sesion")
+    )
     
     # Mostrar introducción teórica
     mostrar_introduccion()
@@ -70,9 +80,23 @@ def main():
         configuracion = configurar_validacion()
         
         st.markdown("---")
-        
+        # Log de inicio de análisis de validación cruzada
+        log_audit(
+            usuario=st.session_state.get("usuario_id", "sistema"),
+            accion="INICIO_ANALISIS_VALIDACION_CRUZADA",
+            entidad="validacion_cruzada",
+            id_entidad=str(modelo),
+            detalles=f"Inicio de análisis de validación cruzada para modelo: {getattr(modelo, 'nombre', str(modelo))}",
+            id_sesion=st.session_state.get("id_sesion", "sin_sesion")
+        )
         # Ejecutar análisis
-        ejecutar_analisis_completo(modelo, configuracion, resultados_benchmarking)
+        ejecutar_analisis_completo(
+            modelo,
+            configuracion,
+            resultados_benchmarking,
+            id_sesion=st.session_state.get("id_sesion", "sin_sesion"),
+            usuario=st.session_state.get("usuario_id", "sistema")
+        )
         
         # Navegación entre páginas
         st.markdown("---")

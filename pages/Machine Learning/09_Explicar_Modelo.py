@@ -4,6 +4,7 @@ from src.modelos.entrenador import cargar_modelo_entrenado, preparar_datos_para_
 from src.datos.cargador import cargar_datos_entrada
 from src.ui.explicacion import mostrar_grafico_importancias
 from src.state.session_manager import SessionManager
+from src.audit.logger import log_audit
 
 st.set_page_config(page_title="Explicación del Modelo", page_icon="🧠", layout="wide")
 st.title("Explicación del Modelo: Variables Influyentes")
@@ -15,6 +16,16 @@ El modelo a explicar es el recomendado y seleccionado previamente en el flujo de
 
 # Obtener modelo recomendado de la sesión
 session = SessionManager()
+# Log de acceso a la página
+log_audit(
+    usuario=session.obtener_estado("usuario_id", "sistema"),
+    accion="ACCESO_PAGINA",
+    entidad="explicar_modelo",
+    id_entidad="",
+    detalles="Acceso a la página de explicación de modelo",
+    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+)
+
 modelo_recomendado = session.obtener_estado("modelo_recomendado")
 
 if not modelo_recomendado or not isinstance(modelo_recomendado, dict) or not modelo_recomendado.get('modelo_recomendado'):
@@ -89,12 +100,37 @@ if st.button("Explicar modelo"):
         # Usar X, y ya cargados arriba
         if X is None or X.empty:
             st.error("No se pudieron cargar los datos de entrada. Verifique el dataset y vuelva a intentarlo.")
+            log_audit(
+                usuario=session.obtener_estado("usuario_id", "sistema"),
+                accion="ERROR_EXPLICACION",
+                entidad="explicar_modelo",
+                id_entidad=modelo_id,
+                detalles="No se pudieron cargar los datos de entrada para explicación.",
+                id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+            )
         else:
             try:
-                X_pre = preparar_datos_para_ml(X)
-                importancias, shap_values = obtener_importancias_shap(modelo, X_pre)
+                X_pre = preparar_datos_para_ml(
+                    X,
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                    usuario=session.obtener_estado("usuario_id", "sistema")
+                )
+                importancias, shap_values = obtener_importancias_shap(
+                    modelo,
+                    X_pre,
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
+                    usuario=session.obtener_estado("usuario_id", "sistema")
+                )
                 mostrar_grafico_importancias(importancias, shap_values, X_pre)
                 st.success("Explicación generada correctamente.")
+                log_audit(
+                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                    accion="EXPLICACION_SHAP",
+                    entidad="explicar_modelo",
+                    id_entidad=modelo_id,
+                    detalles=f"Explicación SHAP generada para modelo {modelo_id}",
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                )
                 st.info(
                     """
                     **Interpretación de los resultados:**
@@ -117,6 +153,14 @@ if st.button("Explicar modelo"):
                     """, icon="⚠️")
             except Exception as e:
                 st.error(f"Error al generar la explicación: {e}")
+                log_audit(
+                    usuario=session.obtener_estado("usuario_id", "sistema"),
+                    accion="ERROR_EXPLICACION",
+                    entidad="explicar_modelo",
+                    id_entidad=modelo_id,
+                    detalles=f"Error al generar explicación SHAP: {str(e)}",
+                    id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
+                )
 
 # Botones de navegación
 st.markdown("---")
