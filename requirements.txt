@@ -11,141 +11,29 @@ matplotlib==3.10.3
 seaborn==0.13.2
 numpy==2.3.0
 plotly==6.1.2
-
-# Procesamiento de datos
-openpyxl==3.1.5   # Para soporte de Excel
-statsmodels>=0.14.0   # Para análisis estadístico
-scipy==1.15.3   # Para procesamiento científico
-
-# Para el benchmarking de modelos
-shap>=0.43.0   # Para explicabilidad de modelos
-lightgbm==4.6.0   # Modelo de gradient boosting eficiente
-xgboost==3.0.2   # Otro modelo de gradient boosting muy usado
-catboost>=1.2.0   # Modelo especial para variables categóricas
-imbalanced-learn>=0.11.0  # Para manejar conjuntos de datos desbalanceados
-tqdm==4.67.1     # Para barras de progreso
-joblib==1.5.1    # Para paralelización y guardado de modelos
-
-# Visualización avanzada
-yellowbrick>=1.5.0  # Herramientas de visualización específicas para ML
-scikit-plot>=0.3.7  # Visualizaciones específicas para scikit-learn
-plotly-express>=0.4.1  # Visualizaciones interactivas con plotly
-umap-learn>=0.5.3  # Para visualización de alta dimensionalidad
-missingno>=0.5.2  # Para visualizar datos faltantes
-
-# Seguridad y autenticación
+openpyxl==3.1.5
+scipy==1.15.3
+shap>=0.43.0
+lightgbm==4.6.0
+xgboost==3.0.2
+catboost>=1.2.0
+imbalanced-learn>=0.11.0
+tqdm==4.67.1
+joblib==1.5.1
+yellowbrick>=1.5.0
+scikit-plot>=0.3.7
+plotly-express>=0.4.1
+umap-learn>=0.5.3
+missingno>=0.5.2
 python-jose[cryptography]>=3.3.0
-
-# Logging y auditoría
 loguru>=0.7.0
-
-# Exportación y reportes
-jinja2>=3.1.2   # Para plantillas de reportes
-pdfkit>=1.0.0   # Para generación de PDF desde HTML
+jinja2>=3.1.2
+pdfkit>=1.0.0
 fpdf
-
-# Snowflake y dependencias para conexión segura
 snowflake-connector-python>=2.8.0
 pyarrow<19.0.0
-
 alembic==1.16.2
 altair==5.5.0
-annotated-types==0.7.0
-anyio==4.9.0
-attrs==25.3.0
-beautifulsoup4==4.13.4
-blinker==1.9.0
-cachetools==5.5.2
-certifi==2025.6.15
-chardet==5.2.0
-charset-normalizer==3.4.2
-click==8.2.1
-cobble==0.1.4
-colorama==0.4.6
-contourpy==1.3.2
-cycler==0.12.1
-databricks-sdk==0.57.0
-defusedxml==0.7.1
-docker==7.1.0
-et_xmlfile==2.0.0
-fastapi==0.115.12
-Flask==3.1.1
-fonttools==4.58.4
-fpdf2==2.8.3
-gitdb==4.0.12
-GitPython==3.1.44
-google-auth==2.40.3
-graphene==3.4.3
-graphql-core==3.2.6
-graphql-relay==3.2.0
-greenlet==3.2.3
-h11==0.16.0
-idna==3.10
-importlib_metadata==8.7.0
-itsdangerous==2.2.0
-Jinja2==3.1.6
-joblib==1.5.1
-jsonschema==4.24.0
-jsonschema-specifications==2025.4.1
-kiwisolver==1.4.8
-lazypredict==0.2.16
-lightgbm==4.6.0
-Mako==1.3.10
-mammoth==1.9.1
-markdownify==1.1.0
-MarkupSafe==3.0.2
-matplotlib==3.10.3
-narwhals==1.43.0
-numpy==2.3.0
-openpyxl==3.1.5
-opentelemetry-api==1.34.1
-opentelemetry-sdk==1.34.1
-opentelemetry-semantic-conventions==0.55b1
-packaging==24.2
-pandas==2.3.0
-pillow==11.2.1
-pip==25.1.1
-plotly==6.1.2
-protobuf==6.31.1
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
-pydantic==2.11.7
-pydantic_core==2.33.2
-pydeck==0.9.1
-pyparsing==3.2.3
-pytest-runner==6.0.1
-python-dateutil==2.9.0.post0
-python-dotenv==1.1.0
-pytz==2025.2
-PyYAML==6.0.2
-referencing==0.36.2
-reportlab==4.4.1
-requests==2.32.4
-rpds-py==0.25.1
-rsa==4.9.1
-scikit-learn==1.7.0
-scipy==1.15.3
-seaborn==0.13.2
-six==1.17.0
-smmap==5.0.2
-sniffio==1.3.1
-soupsieve==2.7
-SQLAlchemy==2.0.41
-sqlparse==0.5.3
-starlette==0.46.2
-streamlit==1.45.1
-tenacity==9.1.2
-threadpoolctl==3.6.0
-toml==0.10.2
-tornado==6.5.1
-tqdm==4.67.1
-typing_extensions==4.14.0
-typing-inspection==0.4.1
-tzdata==2025.2
-urllib3==2.4.0
-uvicorn==0.34.3
-waitress==3.0.2
-watchdog==6.0.0
-Werkzeug==3.1.3
-xgboost==3.0.2
-zipp==3.23.0
+
+# Dependencias mínimas para el funcionamiento y visualización
+# Si necesitas alguna dependencia extra, agrégala aquí justificando su uso
