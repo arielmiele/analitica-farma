@@ -79,26 +79,6 @@ with col2:
                         id_sesion=SessionManager.obtener_estado("id_sesion", None)
                     )
                     st.error("Email o contraseña incorrectos, o usuario inactivo.")
-    st.markdown("---")
-    if st.button("🧪 Acceso rápido (demo)", use_container_width=True, help="Acceso de desarrollo/pruebas. Persiste usuario demo."):
-        SessionManager.set_user(
-            usuario_id=1,
-            usuario_nombre="usuario",
-            usuario_rol="analista",
-            usuario_email="usuario@empresa.com"
-        )
-        # Crear y registrar la sesión demo en Snowflake
-        SessionManager.crear_sesion("1")
-        log_audit(
-            usuario=str(USUARIO_SISTEMA),
-            accion="LOGIN_DEMO",
-            entidad="usuario",
-            id_entidad="1",
-            detalles="Acceso rápido (demo) exitoso para usuario demo.",
-            id_sesion=SessionManager.obtener_estado("id_sesion", None)
-        )
-        st.success("Acceso demo exitoso. Redirigiendo...")
-        st.rerun()
 
 # Redirección automática si ya está logueado
 if SessionManager.is_logged_in():
