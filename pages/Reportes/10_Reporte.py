@@ -1,5 +1,5 @@
 import streamlit as st
-from src.reportes.generador import generar_reporte_completo
+from src.reportes.generador import generar_reporte_completo, guardar_reporte_en_snowflake
 from src.state.session_manager import SessionManager
 from src.audit.logger import log_audit
 
@@ -51,6 +51,17 @@ if st.button("📄 Generar y descargar reporte completo", use_container_width=Tr
                 detalles=f"Reporte generado y listo para descarga. Sesión: {id_sesion}",
                 id_sesion=id_sesion
             )
+            # Guardar el reporte en Snowflake
+            id_reporte = guardar_reporte_en_snowflake(
+                nombre_archivo=resultado['nombre_archivo'],
+                tipo='PDF',
+                usuario=usuario,
+                id_modelo=modelo_seleccionado.get('id_modelo', ''),
+                id_dataset=nombre_dataset,
+                pdf_bytes=resultado['pdf_bytes'],
+                id_sesion=id_sesion
+            )
+            st.info(f"Reporte almacenado en Snowflake con ID: {id_reporte}")
             st.success("Reporte generado correctamente. Descárgalo a continuación.")
             st.download_button(
                 label="Descargar reporte PDF",

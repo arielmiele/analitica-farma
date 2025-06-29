@@ -5,6 +5,9 @@ Cumple HU13: compila automáticamente resultados, visualizaciones y recomendacio
 """
 from datetime import datetime
 from fpdf import FPDF
+import uuid
+import base64
+from src.snowflake.modelos_db import get_native_snowflake_connection
 
 # Sección: Función principal para generar el reporte completo
 
@@ -110,3 +113,38 @@ def _agregar_imagen(pdf, img_bytes, nombre_temp):
         pdf.image(tmp.name, w=170)
     import os
     os.unlink(tmp.name)
+
+def guardar_reporte_en_snowflake(
+    nombre_archivo: str,
+    tipo: str,
+    usuario: str,
+    id_modelo: str,
+    id_dataset: str,
+    pdf_bytes: bytes,
+    id_sesion: str
+) -> str:
+    """
+    Guarda el reporte PDF en la tabla REPORTES de Snowflake.
+    """
+    id_reporte = str(uuid.uuid4())
+    reporte_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+    conn = get_native_snowflake_connection()
+    try:
+        sql = '''
+        INSERT INTO ANALITICA_FARMA.PUBLIC.REPORTES
+        (ID_REPORTE, NOMBRE, TIPO, USUARIO, ID_MODELO, ID_DATASET, REPORTE, ID_SESION)
+        VALUES (%(id_reporte)s, %(nombre)s, %(tipo)s, %(usuario)s, %(id_modelo)s, %(id_dataset)s, %(reporte)s, %(id_sesion)s)
+        '''
+        conn.cursor().execute(sql, {
+            'id_reporte': id_reporte,
+            'nombre': nombre_archivo,
+            'tipo': tipo,
+            'usuario': usuario,
+            'id_modelo': id_modelo,
+            'id_dataset': id_dataset,
+            'reporte': reporte_b64,
+            'id_sesion': id_sesion
+        })
+        return id_reporte
+    finally:
+        conn.close()
