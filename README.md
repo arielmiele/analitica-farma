@@ -95,7 +95,8 @@ Seguimiento de experimentos, versionado de modelos y auditoría avanzada. Planif
 1. **Clonar el repositorio**
 
    ```bash
-   git clone [URL del repositorio]
+   # Clonar el repositorio y acceder al directorio
+   git clone https://github.com/arielmiele/analitica-farma.git
    cd analitica-farma
    ```
 
