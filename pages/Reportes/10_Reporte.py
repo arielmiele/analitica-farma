@@ -3,7 +3,6 @@ from src.reportes.generador import generar_reporte_completo, guardar_reporte_loc
 from src.state.session_manager import SessionManager
 from src.audit.logger import log_audit
 
-st.set_page_config(page_title="Reporte Completo", page_icon="📄", layout="wide")
 st.title("Reporte Completo de Análisis")
 st.markdown("""
 Esta sección permite generar y descargar un reporte PDF con todos los resultados, gráficos y recomendaciones del análisis realizado.

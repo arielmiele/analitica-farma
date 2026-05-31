@@ -6,7 +6,6 @@ from src.ui.explicacion import mostrar_grafico_importancias
 from src.state.session_manager import SessionManager
 from src.audit.logger import log_audit
 
-st.set_page_config(page_title="Explicación del Modelo", page_icon="🧠", layout="wide")
 st.title("Explicación del Modelo: Variables Influyentes")
 
 st.markdown("""

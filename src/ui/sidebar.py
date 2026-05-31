@@ -67,7 +67,7 @@ class SidebarComponents:
                             primeros = predictores[:max_show]
                             st.write(", ".join([f"`{p}`" for p in primeros]) + (f" ... (+{len(predictores)-max_show} más)" if len(predictores) > max_show else ""))
                             if len(predictores) > max_show:
-                                with st.expander("Ver todos los predictores"):
+                                if st.checkbox("Ver todos los predictores", key="chk_ver_predictores"):
                                     st.write(", ".join([f"`{p}`" for p in predictores]))
             else:
                 st.info("No hay dataset cargado")
