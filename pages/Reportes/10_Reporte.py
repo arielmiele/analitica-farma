@@ -1,5 +1,5 @@
 import streamlit as st
-from src.reportes.generador import generar_reporte_completo, guardar_reporte_en_snowflake
+from src.reportes.generador import generar_reporte_completo, guardar_reporte_local
 from src.state.session_manager import SessionManager
 from src.audit.logger import log_audit
 
@@ -49,11 +49,11 @@ if faltantes:
 if st.session_state.get("reporte_generado") and st.session_state.get("resultado_reporte"):
     resultado = st.session_state["resultado_reporte"]
     id_reporte = st.session_state.get("id_reporte", None)
-    error_snowflake = st.session_state.get("error_snowflake", None)
+    error_guardar = st.session_state.get("error_guardar", None)
     if id_reporte:
-        st.info(f"Reporte almacenado en Snowflake con ID: {id_reporte}")
-    if error_snowflake:
-        st.warning(f"No se pudo almacenar el reporte en Snowflake. El PDF se generó correctamente y puedes descargarlo. Detalle: {error_snowflake}")
+        st.info(f"Reporte almacenado localmente con ID: {id_reporte}")
+    if error_guardar:
+        st.warning(f"No se pudo almacenar el reporte. El PDF se generó correctamente y podés descargarlo. Detalle: {error_guardar}")
     st.success("Reporte generado correctamente. Descárgalo a continuación.")
     st.download_button(
         label="Descargar reporte PDF",
@@ -73,7 +73,7 @@ if st.session_state.get("reporte_generado") and st.session_state.get("resultado_
         st.session_state["reporte_generado"] = False
         st.session_state["resultado_reporte"] = None
         st.session_state["id_reporte"] = None
-        st.session_state["error_snowflake"] = None
+        st.session_state["error_guardar"] = None
         st.rerun()
 else:
     if st.button("📄 Generar y descargar reporte completo", use_container_width=True):
@@ -96,9 +96,9 @@ else:
                     detalles=f"Reporte generado y listo para descarga. Sesión: {id_sesion}",
                     id_sesion=id_sesion
                 )
-                # Guardar el reporte en Snowflake
+                # Guardar el reporte localmente
                 id_reporte = None
-                error_snowflake = None
+                error_guardar = None
                 try:
                     resultados_reporte = {
                         'calidad_datos': calidad_datos,
@@ -107,9 +107,8 @@ else:
                         'interpretabilidad': interpretabilidad,
                         'nombre_dataset': nombre_dataset,
                         'usuario': usuario,
-                        'fecha_generacion': resultado['nombre_archivo'].replace('Reporte_' + nombre_dataset + '_', '').replace('.pdf', '')
                     }
-                    id_reporte = guardar_reporte_en_snowflake(
+                    id_reporte = guardar_reporte_local(
                         nombre_archivo=resultado['nombre_archivo'],
                         tipo='PDF',
                         usuario=usuario,
@@ -119,19 +118,19 @@ else:
                         id_sesion=id_sesion
                     )
                 except Exception as e:
-                    error_snowflake = str(e)
+                    error_guardar = str(e)
                     log_audit(
                         usuario=usuario,
-                        accion="ERROR_SNOWFLAKE_REPORTE",
+                        accion="ERROR_GUARDAR_REPORTE",
                         entidad="reporte_completo",
                         id_entidad=nombre_dataset,
-                        detalles=f"Error al guardar en Snowflake: {str(e)}",
+                        detalles=f"Error al guardar reporte localmente: {str(e)}",
                         id_sesion=id_sesion
                     )
                 st.session_state["reporte_generado"] = True
                 st.session_state["resultado_reporte"] = resultado
                 st.session_state["id_reporte"] = id_reporte
-                st.session_state["error_snowflake"] = error_snowflake
+                st.session_state["error_guardar"] = error_guardar
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al generar el reporte: {e}")

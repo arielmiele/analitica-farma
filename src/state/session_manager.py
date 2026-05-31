@@ -2,8 +2,7 @@ import streamlit as st
 from typing import Dict, Any
 import datetime
 import pandas as pd
-import uuid
-from src.snowflake.snowflake_conn import get_native_snowflake_connection
+from src.database.sesiones_db import crear_sesion as _crear_sesion_db, cerrar_sesion
 
 class SessionManager:
     """
@@ -55,8 +54,8 @@ class SessionManager:
         
         # Procesar origen
         origen = st.session_state.get('metodo_carga', 'CSV')
-        if origen == 'existente' or origen == 'snowflake':
-            info["origen"] = 'Snowflake'
+        if origen == 'existente':
+            info["origen"] = 'Local (SQLite)'
         else:
             info["origen"] = 'CSV'
             
@@ -205,36 +204,19 @@ class SessionManager:
     @staticmethod
     def logout() -> None:
         """
-        Cierra la sesión del usuario actual y limpia los datos de sesión.
-        Además, actualiza el estado de la sesión en Snowflake a INACTIVA y registra la fecha de cierre.
+        Cierra la sesión del usuario actual, actualiza el estado en SQLite y limpia session_state.
         """
-        # Actualizar estado de la sesión en Snowflake si existe id_sesion
         id_sesion = st.session_state.get("id_sesion", None)
         if id_sesion:
             try:
-                conn = get_native_snowflake_connection()
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    UPDATE SESIONES SET ESTADO = %s, FECHA_FIN = CURRENT_TIMESTAMP()
-                    WHERE ID_SESION = %s
-                    """,
-                    ("INACTIVA", id_sesion)
-                )
-                conn.commit()
-                cursor.close()
-                conn.close()
+                cerrar_sesion(id_sesion)
             except Exception:
-                # Loguear el error si se desea, pero continuar con el logout local
                 pass
-            # Eliminar id_sesion para forzar nueva sesión en próximo login
             if "id_sesion" in st.session_state:
                 del st.session_state["id_sesion"]
-        # Limpiar variables de sesión de usuario
         for key in list(st.session_state.keys()):
-            if (isinstance(key, str) and key.startswith('usuario_')) or key in ['authenticated', 'current_user']:
+            if (isinstance(key, str) and key.startswith("usuario_")) or key in ["authenticated", "current_user"]:
                 del st.session_state[key]
-        # Aseguramos que logged_in sea False
         st.session_state.logged_in = False
     
     @staticmethod
@@ -272,26 +254,9 @@ class SessionManager:
     @staticmethod
     def crear_sesion(usuario_id: str) -> str:
         """
-        Genera un ID de sesión único, lo registra en la tabla SESIONES de Snowflake y lo almacena en st.session_state.
-        
-        Args:
-            usuario_id (str): ID del usuario autenticado
-        
-        Returns:
-            str: ID de sesión generado
+        Genera un ID de sesión único, lo registra en SQLite y lo almacena en st.session_state.
         """
         if "id_sesion" not in st.session_state:
-            id_sesion = str(uuid.uuid4())
+            id_sesion = _crear_sesion_db(int(usuario_id))
             st.session_state["id_sesion"] = id_sesion
-            # Registrar la sesión en Snowflake
-            conn = get_native_snowflake_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                """INSERT INTO SESIONES (ID_SESION, USUARIO, FECHA_INICIO, ESTADO)
-                       VALUES (%s, %s, CURRENT_TIMESTAMP(), %s)""",
-                (id_sesion, usuario_id, 'ACTIVA')
-            )
-            conn.commit()
-            cursor.close()
-            conn.close()
         return st.session_state["id_sesion"]

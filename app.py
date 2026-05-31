@@ -1,11 +1,15 @@
 import streamlit as st
 
 # Importar módulos del proyecto reorganizado
+from src.database.init_db import init_db
 from src.state.session_manager import SessionManager
 from src.ui.sidebar import SidebarComponents
 
 # Configuración global de la app (título e ícono en la pestaña)
 st.set_page_config(page_title="Analitica Farma", page_icon=":pill:", layout="wide")
+
+# Inicializar base de datos SQLite (idempotente: solo crea si no existe)
+init_db()
 
 # Inicializar el estado de sesión
 SessionManager.init_session_state()

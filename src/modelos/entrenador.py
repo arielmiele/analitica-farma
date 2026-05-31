@@ -16,8 +16,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, 
     r2_score, mean_squared_error, mean_absolute_error
 )
-from src.snowflake.modelos_db import insertar_benchmarking_modelos
-from src.snowflake.snowflake_conn import get_native_snowflake_connection
+from src.database.modelos_db import insertar_benchmarking_modelos, obtener_ultimo_benchmarking as _obtener_ultimo_benchmarking, obtener_benchmarking_por_id as _obtener_benchmarking_db
 
 # Importar modelos de clasificación
 from sklearn.linear_model import LogisticRegression
@@ -435,7 +434,7 @@ def guardar_resultados_benchmarking(
             accion="GUARDAR_BENCHMARKING",
             entidad="entrenador",
             id_entidad=str(benchmarking_id),
-            detalles=f"Resultados de benchmarking guardados en Snowflake con ID {benchmarking_id}",
+            detalles=f"Resultados de benchmarking guardados en SQLite con ID {benchmarking_id}",
             id_sesion=id_sesion
         )
         return benchmarking_id
@@ -455,64 +454,13 @@ def obtener_ultimo_benchmarking(
     db_path: Optional[str] = None
 ) -> Optional[Dict]:
     """
-    Obtiene los resultados del último benchmarking realizado desde Snowflake.
-    
+    Obtiene los resultados del último benchmarking realizado desde SQLite.
+
     Args:
         id_usuario (int, opcional): ID del usuario para filtrar
-        db_path (str, opcional): Ignorado, solo por compatibilidad
-        
-    Returns:
-        Dict: Resultados del benchmarking o None si no hay
+        db_path (str, opcional): Ignorado, mantenido por compatibilidad
     """
-    conn = get_native_snowflake_connection()
-    if not conn:
-        log_audit(
-            usuario="sistema",
-            accion="ERROR_CONEXION",
-            entidad="entrenador",
-            id_entidad="N/A",
-            detalles="No se pudo obtener la conexión a Snowflake.",
-            id_sesion="N/A"
-        )
-        return None
-    cur = None
-    try:
-        cur = conn.cursor()
-        if id_usuario:
-            cur.execute(
-                """
-                SELECT RESULTADOS_COMPLETOS FROM BENCHMARKING_MODELOS
-                WHERE ID_USUARIO = %s
-                ORDER BY FECHA_EJECUCION DESC LIMIT 1
-                """,
-                (id_usuario,)
-            )
-        else:
-            cur.execute(
-                """
-                SELECT RESULTADOS_COMPLETOS FROM BENCHMARKING_MODELOS
-                ORDER BY FECHA_EJECUCION DESC LIMIT 1
-                """
-            )
-        row = cur.fetchone()
-        if row and row[0]:
-            import json
-            return json.loads(row[0])
-        return None
-    except Exception as e:
-        log_audit(
-            usuario="sistema",
-            accion="ERROR_OBTENER_BENCHMARKING",
-            entidad="entrenador",
-            id_entidad="N/A",
-            detalles=f"Error al obtener benchmarking desde Snowflake: {str(e)}",
-            id_sesion="N/A"
-        )
-        return None
-    finally:
-        if cur is not None:
-            cur.close()
-        conn.close()
+    return _obtener_ultimo_benchmarking(id_usuario=id_usuario)
 
 def obtener_benchmarking_por_id(
     benchmarking_id: int,
@@ -522,68 +470,29 @@ def obtener_benchmarking_por_id(
     usuario: str = "sistema"
 ) -> Optional[Dict]:
     """
-    Obtiene los resultados de un benchmarking específico por su ID desde Snowflake.
-    
+    Obtiene los resultados de un benchmarking específico por su ID desde SQLite.
+
     Args:
         benchmarking_id (int): ID del benchmarking a obtener
-        db_path (str, opcional): Ignorado, solo por compatibilidad
+        db_path (str, opcional): Ignorado, mantenido por compatibilidad
         deserializar (bool): Si True, deserializa los objetos modelo
-        id_sesion (str): ID de sesión para trazabilidad (opcional)
-        usuario (str): Usuario que ejecuta la acción (opcional)
-        
-    Returns:
-        Dict: Resultados del benchmarking o None si no existe
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
     """
-    conn = get_native_snowflake_connection()
-    if not conn:
+    resultados = _obtener_benchmarking_db(benchmarking_id)
+    if resultados is None:
+        return None
+    if deserializar:
+        resultados = deserializar_modelos_benchmarking(resultados, id_sesion=id_sesion, usuario=usuario)
         log_audit(
             usuario=usuario,
-            accion="ERROR_CONEXION",
+            accion="DESERIALIZAR_MODELOS",
             entidad="entrenador",
             id_entidad=str(benchmarking_id),
-            detalles="No se pudo obtener la conexión a Snowflake.",
-            id_sesion=id_sesion
+            detalles=f"Modelos deserializados para benchmarking ID {benchmarking_id}",
+            id_sesion=id_sesion,
         )
-        return None
-    cur = None
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT RESULTADOS_COMPLETOS FROM BENCHMARKING_MODELOS WHERE ID = %s
-            """,
-            (benchmarking_id,)
-        )
-        row = cur.fetchone()
-        if row and row[0]:
-            import json
-            resultados = json.loads(row[0])
-            if deserializar:
-                resultados = deserializar_modelos_benchmarking(resultados, id_sesion=id_sesion, usuario=usuario)
-                log_audit(
-                    usuario=usuario,
-                    accion="DESERIALIZAR_MODELOS",
-                    entidad="entrenador",
-                    id_entidad=str(benchmarking_id),
-                    detalles=f"Modelos deserializados para benchmarking ID {benchmarking_id}",
-                    id_sesion=id_sesion
-                )
-            return resultados
-        return None
-    except Exception as e:
-        log_audit(
-            usuario=usuario,
-            accion="ERROR_OBTENER_BENCHMARKING_ID",
-            entidad="entrenador",
-            id_entidad=str(benchmarking_id),
-            detalles=f"Error al obtener benchmarking por ID {benchmarking_id} desde Snowflake: {str(e)}",
-            id_sesion=id_sesion
-        )
-        return None
-    finally:
-        if cur is not None:
-            cur.close()
-        conn.close()
+    return resultados
 
 def preparar_datos_para_ml(X: pd.DataFrame, id_sesion: str, usuario: str) -> pd.DataFrame:
     """

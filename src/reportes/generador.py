@@ -1,12 +1,11 @@
 """
 Módulo: generador.py
 Responsabilidad: Generación de reportes PDF completos con resultados, gráficos y recomendaciones.
-Cumple HU13: compila automáticamente resultados, visualizaciones y recomendaciones en un documento con nombre único y secciones diferenciadas.
 """
 from datetime import datetime
 from fpdf import FPDF
 import uuid
-from src.snowflake.modelos_db import get_native_snowflake_connection
+from src.database.reportes_db import guardar_reporte
 
 # Sección: Función principal para generar el reporte completo
 
@@ -121,7 +120,7 @@ def _agregar_imagen(pdf, img_bytes, nombre_temp):
     import os
     os.unlink(tmp.name)
 
-def guardar_reporte_en_snowflake(
+def guardar_reporte_local(
     nombre_archivo: str,
     tipo: str,
     usuario: str,
@@ -131,28 +130,15 @@ def guardar_reporte_en_snowflake(
     id_sesion: str
 ) -> str:
     """
-    Guarda solo la metadata y los resultados estructurados del reporte en la tabla REPORTES de Snowflake.
-    El PDF NO se almacena, solo los datos tabulares/resultados y la metadata.
+    Guarda los metadatos y resultados del reporte en SQLite.
+    Mantiene la misma firma para compatibilidad con el código que la llama.
     """
-    id_reporte = str(uuid.uuid4())
-    import json
-    conn = get_native_snowflake_connection()
-    try:
-        sql = '''
-        INSERT INTO ANALITICA_FARMA.PUBLIC.REPORTES
-        (ID_REPORTE, NOMBRE, TIPO, USUARIO, ID_MODELO, ID_DATASET, REPORTE, ID_SESION)
-        VALUES (%s, %s, %s, %s, %s, %s, PARSE_JSON(%s), %s)
-        '''
-        conn.cursor().execute(sql, [
-            id_reporte,
-            nombre_archivo,
-            tipo,
-            usuario,
-            id_modelo,
-            id_dataset,
-            json.dumps(resultados),
-            id_sesion
-        ])
-        return id_reporte
-    finally:
-        conn.close()
+    return guardar_reporte(
+        nombre_archivo=nombre_archivo,
+        tipo=tipo,
+        id_usuario=usuario,
+        id_sesion=id_sesion,
+        id_benchmarking=None,
+        id_dataset=id_dataset,
+        resultados=resultados,
+    )
