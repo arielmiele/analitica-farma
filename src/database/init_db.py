@@ -88,6 +88,22 @@ CREATE TABLE IF NOT EXISTS auditoria (
     fecha       TEXT,
     id_sesion   TEXT
 );
+CREATE TABLE IF NOT EXISTS historial_ejecuciones (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_usuario          INTEGER NOT NULL,
+    id_sesion           TEXT    NOT NULL,
+    dataset_nombre      TEXT,
+    tipo_problema       TEXT,
+    variable_objetivo   TEXT,
+    modelo_ganador      TEXT,
+    metrica_nombre      TEXT,
+    metrica_valor       REAL,
+    total_modelos       INTEGER,
+    modelos_exitosos    INTEGER,
+    duracion_segundos   REAL,
+    timestamp           TEXT    NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
+);
 """
 
 

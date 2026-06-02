@@ -2,12 +2,38 @@
 Módulo para la carga de datos desde diferentes fuentes.
 Proporciona funciones para cargar datos desde archivos CSV y almacenarlos en SQLite.
 """
+import io
 import os
 import pandas as pd
 import streamlit as st
 from datetime import datetime
 from typing import Optional
 from src.audit.logger import log_audit
+
+def _detectar_encoding(archivo) -> str:
+    """
+    Auto-detecta el encoding de un archivo usando chardet.
+    Falls back to latin-1 if detection fails or confidence is low.
+    """
+    try:
+        import chardet
+        raw = archivo.read()
+        archivo.seek(0)
+        detected = chardet.detect(raw)
+        encoding = detected.get('encoding') or 'utf-8'
+        confidence = detected.get('confidence', 0)
+        if confidence < 0.7:
+            encoding = 'latin-1'
+        return encoding
+    except ImportError:
+        archivo.seek(0)
+        return 'utf-8'
+    except Exception:
+        try:
+            archivo.seek(0)
+        except Exception:
+            pass
+        return 'latin-1'
 
 def cargar_datos_desde_csv(archivo, id_sesion: str, **kwargs):
     nombre_archivo = "N/A"
@@ -17,6 +43,11 @@ def cargar_datos_desde_csv(archivo, id_sesion: str, **kwargs):
             nombre_archivo = archivo.name
         else:
             nombre_archivo = os.path.basename(archivo)
+
+        # Auto-detectar encoding si no se especificó
+        if 'encoding' not in kwargs and hasattr(archivo, 'read'):
+            encoding_detectado = _detectar_encoding(archivo)
+            kwargs['encoding'] = encoding_detectado
         
         # Cargar el archivo
         df = pd.read_csv(archivo, **kwargs)

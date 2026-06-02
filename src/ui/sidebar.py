@@ -1,12 +1,89 @@
 import streamlit as st
 from src.state.session_manager import SessionManager
 
+# Definición de los pasos del workflow con las claves de sesión que indican su completitud.
+# Pasos obligatorios del flujo principal (8 pasos). Validación Cruzada es opcional/avanzado.
+_WORKFLOW_STEPS = [
+    {"label": "Login",                     "key": "usuario_id",              "page": "pages/00_Logueo.py",                           "opcional": False},
+    {"label": "Cargar datos",              "key": "df",                      "page": "pages/Datos/01_Cargar_Datos.py",               "opcional": False},
+    {"label": "Validar y analizar datos",  "key": "calidad_datos",           "page": "pages/Datos/03_Analizar_Calidad.py",           "opcional": False},
+    {"label": "Configurar datos",          "key": "variable_objetivo",       "page": "pages/Datos/04_Configurar_Datos.py",           "opcional": False},
+    {"label": "Entrenar modelos",          "key": "resultados_benchmarking", "page": "pages/Machine Learning/05_Entrenar_Modelos.py","opcional": False},
+    {"label": "Evaluar modelos",           "key": "resultados_benchmarking", "page": "pages/Machine Learning/06_Evaluar_Modelos.py", "opcional": False},
+    {"label": "Recomendar modelo",         "key": "modelo_recomendado",      "page": "pages/Machine Learning/08_Recomendar_Modelo.py","opcional": False},
+    {"label": "Validación cruzada ⭐",    "key": "resultados_benchmarking", "page": "pages/Machine Learning/07_Validacion_Cruzada.py","opcional": True},
+    {"label": "Explicar modelo",           "key": "interpretabilidad",       "page": "pages/Machine Learning/09_Explicar_Modelo.py", "opcional": False},
+]
+
 class SidebarComponents:
     """
     Clase para gestionar los componentes de UI del sidebar.
     Contiene métodos para renderizar diferentes partes del sidebar.
     """
     
+    @staticmethod
+    def render_workflow_stepper() -> None:
+        """
+        Renderiza un indicador visual de progreso del workflow.
+        Los pasos opcionales (⭐) no se cuentan para la barra de progreso principal.
+        """
+        if not SessionManager.is_logged_in():
+            return
+
+        import pandas as pd
+
+        def _es_completado(key: str) -> bool:
+            valor = st.session_state.get(key)
+            try:
+                if isinstance(valor, pd.DataFrame):
+                    return not valor.empty
+                if isinstance(valor, (list, dict)):
+                    return len(valor) > 0
+                return valor is not None and valor is not False
+            except Exception:
+                return False
+
+        # Progreso sobre pasos obligatorios solamente
+        pasos_obligatorios = [s for s in _WORKFLOW_STEPS if not s.get("opcional", False)]
+        completados_oblig = sum(1 for s in pasos_obligatorios if _es_completado(s["key"]))
+        total_oblig = len(pasos_obligatorios)
+
+        # Paso actual = primero obligatorio no completado
+        paso_actual_idx = next(
+            (i for i, s in enumerate(_WORKFLOW_STEPS)
+             if not s.get("opcional", False) and not _es_completado(s["key"])),
+            len(_WORKFLOW_STEPS)
+        )
+
+        with st.expander("🗺️ Progreso del Workflow", expanded=False):
+            for i, step in enumerate(_WORKFLOW_STEPS):
+                completado = _es_completado(step["key"])
+                opcional = step.get("opcional", False)
+                if completado:
+                    icono = "✅"
+                    estilo = ""
+                elif i == paso_actual_idx and not opcional:
+                    icono = "⏳"
+                    estilo = "**"
+                elif opcional:
+                    icono = "⭐"
+                    estilo = ""
+                else:
+                    icono = "⬜"
+                    estilo = ""
+                label = step["label"]
+                num = i + 1
+                st.markdown(
+                    f"{icono} {estilo}{num}. {label}{estilo}",
+                    help=f"Ir a: {step['page']}"
+                )
+
+            st.progress(
+                completados_oblig / total_oblig if total_oblig else 0,
+                text=f"{completados_oblig}/{total_oblig} pasos completados"
+            )
+
+
     @staticmethod
     def render_user_info() -> None:
         """
@@ -113,6 +190,7 @@ class SidebarComponents:
         """
         with st.sidebar:
             # Renderizar solo los componentes esenciales
-            SidebarComponents.render_user_info()  # Información del usuario
-            SidebarComponents.render_dataset_info()  # Información del dataset
-            SidebarComponents.render_model_info()  # Información del modelo seleccionado
+            SidebarComponents.render_user_info()         # Información del usuario
+            SidebarComponents.render_workflow_stepper()  # Indicador de progreso
+            SidebarComponents.render_dataset_info()      # Información del dataset
+            SidebarComponents.render_model_info()        # Información del modelo seleccionado

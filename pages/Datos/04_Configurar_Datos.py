@@ -169,6 +169,24 @@ else:
                             )
                             
                             if estructura_valida:
+                                # Si ya hay benchmarking entrenado con diferente selección, invalidarlo
+                                benchmarking_previo = st.session_state.get("resultados_benchmarking")
+                                if benchmarking_previo:
+                                    cols_previas = set(benchmarking_previo.get("columnas_originales", []))
+                                    cols_nuevas = set(variables_seleccionadas)
+                                    if cols_previas and cols_previas != cols_nuevas:
+                                        st.session_state.resultados_benchmarking = None
+                                        st.session_state.modelo_recomendado = None
+                                        st.session_state.interpretabilidad = None
+                                        log_audit(
+                                            usuario_id,
+                                            "INVALIDAR_BENCHMARKING",
+                                            "configurar_datos",
+                                            st.session_state.filename,
+                                            f"Benchmarking invalidado: predictores cambiaron de {len(cols_previas)} a {len(cols_nuevas)} variables",
+                                            id_sesion=st.session_state.get("id_sesion", "sin_sesion")
+                                        )
+
                                 # Guardar configuración en la base de datos
                                 guardar_configuracion_modelo(configuracion, usuario=usuario_id, id_usuario=usuario_id, id_sesion=st.session_state.get("id_sesion", "sin_sesion"))
                                 

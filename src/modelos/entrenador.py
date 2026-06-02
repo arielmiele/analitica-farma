@@ -16,7 +16,12 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, 
     r2_score, mean_squared_error, mean_absolute_error
 )
-from src.database.modelos_db import insertar_benchmarking_modelos, obtener_ultimo_benchmarking as _obtener_ultimo_benchmarking, obtener_benchmarking_por_id as _obtener_benchmarking_db
+from src.database.modelos_db import (
+    insertar_benchmarking_modelos,
+    insertar_historial_ejecucion,
+    obtener_ultimo_benchmarking as _obtener_ultimo_benchmarking,
+    obtener_benchmarking_por_id as _obtener_benchmarking_db,
+)
 
 # Importar modelos de clasificación
 from sklearn.linear_model import LogisticRegression
@@ -90,7 +95,9 @@ def preparar_datos(
     X: pd.DataFrame, 
     y: pd.Series, 
     tipo_problema: str,
-    test_size: float = 0.2
+    test_size: float = 0.2,
+    id_sesion: str = "sin_sesion",
+    usuario: str = "sistema"
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Optional[LabelEncoder]]:
     """
     Prepara los datos para entrenar modelos, realizando la división en train/test
@@ -101,10 +108,28 @@ def preparar_datos(
         y (pd.Series): Variable objetivo
         tipo_problema (str): 'clasificacion' o 'regresion'
         test_size (float): Tamaño del conjunto de prueba (por defecto 0.2)
+        id_sesion (str): ID de sesión para trazabilidad
+        usuario (str): Usuario que ejecuta la acción
         
     Returns:
         Tuple: X_train, X_test, y_train, y_test, le (LabelEncoder si es clasificación)
     """
+    # Reemplazar valores infinitos por NaN para evitar errores en sklearn
+    X = X.replace([np.inf, -np.inf], np.nan)
+    
+    # Eliminar columnas completamente NaN (no aportan información)
+    cols_all_nan = X.columns[X.isnull().all()].tolist()
+    if cols_all_nan:
+        X = X.drop(columns=cols_all_nan)
+        log_audit(
+            usuario=usuario,
+            accion="COLUMNAS_ALL_NAN_ELIMINADAS",
+            entidad="entrenador",
+            id_entidad="preparar_datos",
+            detalles=f"Columnas eliminadas por ser completamente NaN: {cols_all_nan}",
+            id_sesion=id_sesion
+        )
+
     # Dividir datos en entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=42
@@ -275,7 +300,7 @@ def ejecutar_benchmarking(
     
     # Preparar datos
     X_train, X_test, y_train, y_test, le = preparar_datos(
-        X_preprocesado, y, tipo_problema, test_size
+        X_preprocesado, y, tipo_problema, test_size, id_sesion=id_sesion, usuario=usuario
     )
     
     # Seleccionar los modelos según el tipo de problema
@@ -295,7 +320,10 @@ def ejecutar_benchmarking(
         # Guardar datos de prueba para visualizaciones avanzadas
         'X_test': X_test,
         'y_test': y_test,
+        # columnas_originales: selección del usuario antes de preprocesamiento (fechas, etc.)
         'columnas_originales': X.columns.tolist(),
+        # columnas_entrenamiento: columnas POST-preprocesamiento (las que el modelo realmente ve)
+        'columnas_entrenamiento': X_preprocesado.columns.tolist(),
         'tiene_label_encoder': le is not None
     }
     
@@ -429,6 +457,16 @@ def guardar_resultados_benchmarking(
     
     try:
         benchmarking_id = insertar_benchmarking_modelos(resultados_serializables, id_usuario, id_sesion, usuario)
+        # Registrar en historial de ejecuciones para el dashboard de auditoría
+        try:
+            insertar_historial_ejecucion(
+                resultados=resultados,
+                id_usuario=id_usuario,
+                id_sesion=id_sesion,
+                dataset_nombre=resultados.get("variable_objetivo", ""),
+            )
+        except Exception:
+            pass  # El historial es opcional; no interrumpir el flujo principal
         log_audit(
             usuario=usuario,
             accion="GUARDAR_BENCHMARKING",

@@ -197,6 +197,20 @@ def main():
             format="%.2f"
         )
     
+    # Mostrar banner de advertencia si hay un modelo entrenado pero los predictores cambiaron
+    benchmarking_actual = session.obtener_estado("resultados_benchmarking")
+    vars_sesion = session.obtener_estado("variables_predictoras", [])
+    if benchmarking_actual and vars_sesion:
+        cols_entrenamiento = set(benchmarking_actual.get("columnas_originales", []))
+        cols_actuales = set(vars_sesion)
+        if cols_entrenamiento and cols_entrenamiento != cols_actuales:
+            st.warning(
+                f"⚠️ **La selección de predictores cambió desde el último entrenamiento.** "
+                f"El modelo entrenado usó {len(cols_entrenamiento)} variables; la configuración actual tiene {len(cols_actuales)}. "
+                "**Reentrená el modelo** para que sea consistente con la nueva selección antes de evaluar o explicar.",
+                icon="🔄"
+            )
+
     # Botón para ejecutar benchmarking
     if st.button("🔍 Iniciar evaluación de modelos", type="primary"):
         if not var_objetivo:
@@ -211,18 +225,30 @@ def main():
         # Incrementar el trigger para forzar un nuevo entrenamiento
         session.incrementar_trigger_benchmarking()
         
-        # Guardar configuración del modelo
+        # Respetar la selección de predictores del usuario (página 04)
+        variables_predictoras = session.obtener_estado("variables_predictoras", [])
+        if variables_predictoras:
+            columnas_pred = [c for c in variables_predictoras if c in df.columns and c != var_objetivo]
+        else:
+            # Fallback: todas las columnas menos la objetivo
+            columnas_pred = [col for col in df.columns if col != var_objetivo]
+            st.info("ℹ️ No se encontró una selección de predictores previa. Se usarán todas las columnas disponibles.")
+
+        # Guardar configuración del modelo con las columnas reales usadas
         config = {
             "tipo_problema": tipo_problema,
             "variable_objetivo": var_objetivo,
-            "variables_predictoras": [col for col in df.columns if col != var_objetivo],
+            "variables_predictoras": columnas_pred,
             "test_size": test_size,
             "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         }
+        # Actualizar session_state con las columnas efectivamente usadas
+        session.guardar_estado("variables_predictoras", columnas_pred)
         
-        # Preparar datos para el benchmarking
-        X = df.drop(columns=[var_objetivo])
+        # Preparar datos para el benchmarking usando SOLO las columnas seleccionadas
+        X = df[columnas_pred]
         y = df[var_objetivo]
+
         
         # Pre-procesar columnas de fecha para evitar errores
         columnas_a_procesar = []
@@ -237,10 +263,8 @@ def main():
                 if any(muestra.str.match(patron_fecha)):
                     columnas_a_procesar.append(columna)
         
-        # Guardar los datos iniciales en la sesión para usarlos después
+        # Guardar solo metadatos (NO los DataFrames completos para ahorrar memoria)
         session.guardar_estado("datos_pre_entrenamiento", {
-            "X": X, 
-            "y": y,
             "tipo_problema": tipo_problema,
             "test_size": test_size,
             "var_objetivo": var_objetivo,
@@ -267,7 +291,9 @@ def main():
     
     # Si estamos en el paso de configurar fechas, mostrar opciones
     if paso_entrenamiento == "configurar_fechas" and datos_pre_entrenamiento:
-        X = datos_pre_entrenamiento["X"]
+        var_objetivo_fechas = datos_pre_entrenamiento["var_objetivo"]
+        df_actual = session.cargar_dataframe()
+        X = df_actual.drop(columns=[var_objetivo_fechas]) if df_actual is not None else pd.DataFrame()
         columnas_a_procesar = datos_pre_entrenamiento["columnas_fecha"]
         
         st.subheader("🗓️ Configuración de columnas de fecha")
@@ -322,15 +348,22 @@ def main():
     # Si estamos en el paso de ejecutar el entrenamiento, proceder con el benchmarking
     elif paso_entrenamiento == "ejecutar_entrenamiento" and datos_pre_entrenamiento:
         try:
-            # Recuperar datos
-            X = datos_pre_entrenamiento["X"]
-            y = datos_pre_entrenamiento["y"]
+            # Recuperar metadatos (X e y se reconstruyen desde session_state para no duplicarlos)
             tipo_problema = datos_pre_entrenamiento["tipo_problema"]
             test_size = datos_pre_entrenamiento["test_size"]
             var_objetivo = datos_pre_entrenamiento["var_objetivo"]
             config = datos_pre_entrenamiento["config"]
             columnas_a_procesar = datos_pre_entrenamiento.get("columnas_fecha", [])
             opcion_fecha = datos_pre_entrenamiento.get("opcion_fecha", "Mantener como están (podría causar errores)")
+            
+            # Reconstruir X/y desde el DataFrame en sesión
+            df_actual = session.cargar_dataframe()
+            if df_actual is None:
+                st.error("⚠️ No se pudo cargar el dataset desde la sesión. Por favor, recargue los datos.")
+                session.guardar_estado("paso_entrenamiento", None)
+                return
+            X = df_actual.drop(columns=[var_objetivo])
+            y = df_actual[var_objetivo]
             
             # Procesar columnas de fecha según la opción seleccionada
             if columnas_a_procesar:

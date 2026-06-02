@@ -87,6 +87,11 @@ st.divider()
 if tipo_carga == "Subir archivo CSV":
     st.header("2. Subir archivo CSV")
     uploaded_file = st.file_uploader("Selecciona un archivo CSV", type=["csv"], key="file_uploader")
+    MAX_FILE_SIZE_MB = 500
+    if uploaded_file is not None and uploaded_file.size > MAX_FILE_SIZE_MB * 1024 * 1024:
+        st.error(f"⛔ El archivo es demasiado grande ({uploaded_file.size / (1024*1024):.1f} MB). El tamaño máximo permitido es {MAX_FILE_SIZE_MB} MB.")
+        uploaded_file = None
+
     cargar_btn = st.button("Cargar Datos", use_container_width=True, disabled=uploaded_file is None)
     if cargar_btn and uploaded_file is not None:
         with st.spinner("Cargando y procesando el archivo..."):

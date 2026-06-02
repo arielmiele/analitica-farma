@@ -84,6 +84,91 @@ def obtener_benchmarking_por_id(benchmarking_id: int) -> Optional[Dict]:
         conn.close()
 
 
+# ── Historial de ejecuciones ──────────────────────────────────────────────────
+
+def insertar_historial_ejecucion(
+    resultados: Dict,
+    id_usuario: int,
+    id_sesion: str,
+    dataset_nombre: str = "",
+    duracion_segundos: float = 0.0,
+) -> int:
+    """
+    Inserta un registro en historial_ejecuciones con los datos del benchmarking finalizado.
+    Extrae el mejor modelo y su métrica principal para consultas rápidas de dashboard.
+    """
+    mejor = resultados.get("mejor_modelo") or {}
+    metrica_nombre = ""
+    metrica_valor = None
+    metricas = mejor.get("metricas", {})
+    tipo = resultados.get("tipo_problema", "")
+    if tipo == "clasificacion":
+        metrica_nombre = "accuracy"
+        metrica_valor = metricas.get("accuracy")
+    elif tipo == "regresion":
+        metrica_nombre = "r2"
+        metrica_valor = metricas.get("r2")
+
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            """INSERT INTO historial_ejecuciones
+               (id_usuario, id_sesion, dataset_nombre, tipo_problema, variable_objetivo,
+                modelo_ganador, metrica_nombre, metrica_valor, total_modelos,
+                modelos_exitosos, duracion_segundos, timestamp)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                id_usuario,
+                id_sesion,
+                dataset_nombre,
+                tipo,
+                resultados.get("variable_objetivo", ""),
+                mejor.get("nombre", ""),
+                metrica_nombre,
+                metrica_valor,
+                resultados.get("total_modelos", 0),
+                len(resultados.get("modelos_exitosos", [])),
+                duracion_segundos,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def obtener_historial_ejecuciones(id_usuario: Optional[int] = None, limit: int = 50) -> list:
+    """
+    Devuelve el historial de ejecuciones para el dashboard de auditoría.
+    Si id_usuario es None, devuelve registros de todos los usuarios.
+    """
+    conn = get_connection()
+    try:
+        if id_usuario:
+            rows = conn.execute(
+                """SELECT id, dataset_nombre, tipo_problema, variable_objetivo, modelo_ganador,
+                          metrica_nombre, metrica_valor, modelos_exitosos, total_modelos,
+                          duracion_segundos, timestamp
+                   FROM historial_ejecuciones
+                   WHERE id_usuario = ?
+                   ORDER BY timestamp DESC LIMIT ?""",
+                (id_usuario, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT id, dataset_nombre, tipo_problema, variable_objetivo, modelo_ganador,
+                          metrica_nombre, metrica_valor, modelos_exitosos, total_modelos,
+                          duracion_segundos, timestamp
+                   FROM historial_ejecuciones
+                   ORDER BY timestamp DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 # ── Configuraciones de modelo ─────────────────────────────────────────────────
 
 def guardar_configuracion_modelo(
