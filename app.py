@@ -1,11 +1,15 @@
 import streamlit as st
 
 # Importar módulos del proyecto reorganizado
+from src.database.init_db import init_db
 from src.state.session_manager import SessionManager
 from src.ui.sidebar import SidebarComponents
 
 # Configuración global de la app (título e ícono en la pestaña)
 st.set_page_config(page_title="Analitica Farma", page_icon=":pill:", layout="wide")
+
+# Inicializar base de datos SQLite (idempotente: solo crea si no existe)
+init_db()
 
 # Inicializar el estado de sesión
 SessionManager.init_session_state()
@@ -28,15 +32,15 @@ def deslogueo():
     st.subheader("📋 Flujo de trabajo recomendado:")
     st.markdown("""
     1. **Cargar Datos**: Importa datos desde CSV o conecta con Snowflake
-    2. **Validar Datos**: Verifica la estructura, tipos y consistencia básica
-    3. **Analizar Calidad**: Examina calidad, duplicados, outliers y estadísticas
-    4. **Configurar Datos**: Define variable objetivo, predictores y tipo de problema
-    5. **Entrenar Modelos**: Ejecuta benchmarking de algoritmos
-    6. **Evaluar Modelos**: Compara métricas y visualizaciones
-    7. **Validación Cruzada**: Detecta overfitting/underfitting con curvas de aprendizaje
-    8. **Recomendar Modelo**: Obtén sugerencia del mejor modelo
-    9. **Explicar Modelo**: Analiza interpretabilidad y variables importantes
-    10. **Generar Reportes**: Exporta informes y dashboards
+    2. **Validar y Analizar Datos**: Revisa estructura, tipos, nulos, duplicados y estadísticas
+    3. **Configurar Datos**: Define la variable objetivo, predictores y tipo de problema
+    4. **Entrenar Modelos**: Ejecuta benchmarking automático de algoritmos de ML
+    5. **Evaluar Modelos**: Compara métricas y visualizaciones detalladas
+    6. **Recomendar Modelo**: Obtén la sugerencia del mejor modelo según tus criterios
+    7. **Explicar Modelo**: Analiza interpretabilidad y variables más importantes (SHAP)
+    8. **Generar Reporte**: Exporta el informe completo en PDF
+
+    > ⭐ **Paso opcional:** *Validación Cruzada* — analiza overfitting/underfitting con curvas de aprendizaje.
     """)
     
     # Sección de acciones

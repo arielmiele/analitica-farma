@@ -6,7 +6,6 @@ from src.ui.explicacion import mostrar_grafico_importancias
 from src.state.session_manager import SessionManager
 from src.audit.logger import log_audit
 
-st.set_page_config(page_title="Explicación del Modelo", page_icon="🧠", layout="wide")
 st.title("Explicación del Modelo: Variables Influyentes")
 
 st.markdown("""
@@ -95,6 +94,13 @@ with st.expander("ℹ️ ¿Por qué es importante este análisis?", expanded=Fal
     """)
 
 if st.button("Explicar modelo"):
+    # Advertencia para datasets grandes
+    if X is not None and len(X) > 2000:
+        st.info(
+            f"⏳ El dataset tiene {len(X):,} filas. SHAP utilizará una muestra de 1.000 filas para "
+            "el cálculo. Esto puede tardar 1-3 minutos.",
+            icon="⚠️"
+        )
     with st.spinner("Calculando importancias SHAP..."):
         modelo = cargar_modelo_entrenado(modelo_id)
         # Usar X, y ya cargados arriba
@@ -115,19 +121,34 @@ if st.button("Explicar modelo"):
                     id_sesion=session.obtener_estado("id_sesion", "sin_sesion"),
                     usuario=session.obtener_estado("usuario_id", "sistema")
                 )
-                # Filtrar X_pre para que tenga solo las columnas usadas en el entrenamiento
+                # Alinear X_pre con las columnas exactas con las que fue entrenado el modelo.
+                # PRIORIDAD: 1) feature_names_in_ del modelo (fuente de verdad)
+                #            2) variables_predictoras de sesión (fallback)
+                #            3) configuración guardada (último recurso)
                 feature_names = None
-                # 1. Intentar obtener desde la sesión
-                feature_names_session = st.session_state.get('variables_predictoras', None)
-                if feature_names_session:
-                    feature_names = feature_names_session
-                    st.info("Variables predictoras obtenidas desde la sesión.")
-                # 2. Si no están en sesión, intentar desde el modelo (solo si es un objeto válido)
-                elif modelo is not None and not isinstance(modelo, dict) and hasattr(modelo, 'feature_names_in_') and getattr(modelo, 'feature_names_in_', None) is not None:
+
+                # 1. Desde el modelo entrenado (más confiable — refleja el entrenamiento real)
+                if modelo is not None and not isinstance(modelo, dict) and hasattr(modelo, 'feature_names_in_') and getattr(modelo, 'feature_names_in_', None) is not None:
                     feature_names = list(modelo.feature_names_in_)
-                    st.info("Variables predictoras obtenidas desde el modelo entrenado.")
-                # 3. Si no, intentar desde la configuración guardada
-                else:
+                    st.info(f"ℹ️ Usando las **{len(feature_names)} variables** con las que fue entrenado el modelo.", icon="🤖")
+
+                # 2. Desde columnas_entrenamiento guardadas en resultados_benchmarking
+                if not feature_names:
+                    resultados_bench = session.obtener_estado("resultados_benchmarking")
+                    cols_entrenamiento = resultados_bench.get("columnas_entrenamiento") if resultados_bench else None
+                    if cols_entrenamiento:
+                        feature_names = cols_entrenamiento
+                        st.info(f"ℹ️ Variables obtenidas del último benchmarking ({len(feature_names)} columnas post-preprocesamiento).")
+
+                # 3. Desde la sesión
+                if not feature_names:
+                    feature_names_session = st.session_state.get('variables_predictoras', None)
+                    if feature_names_session:
+                        feature_names = feature_names_session
+                        st.info(f"ℹ️ Variables predictoras obtenidas desde la sesión ({len(feature_names)}).")
+
+                # 4. Desde la configuración guardada
+                if not feature_names:
                     try:
                         from src.modelos.configurador import obtener_configuracion_modelo
                         config = obtener_configuracion_modelo(
@@ -137,15 +158,15 @@ if st.button("Explicar modelo"):
                         )
                         if config and 'variables_predictoras' in config:
                             feature_names = config['variables_predictoras']
-                            st.info("Variables predictoras recuperadas desde la configuración guardada.")
+                            st.info(f"ℹ️ Variables predictoras recuperadas desde la configuración guardada ({len(feature_names)}).")
                         else:
-                            st.warning("No se pudo determinar las variables usadas en el entrenamiento. Verifica la serialización del modelo o la consistencia de las variables predictoras.")
+                            st.warning("No se pudo determinar las variables usadas en el entrenamiento. Considera reentrenar el modelo.")
                             log_audit(
                                 usuario=session.obtener_estado("usuario_id", "sistema"),
                                 accion="ADVERTENCIA_EXPLICACION",
                                 entidad="explicar_modelo",
                                 id_entidad=modelo_id,
-                                detalles="No se pudo determinar las variables predictoras ni desde la sesión, el modelo ni la configuración.",
+                                detalles="No se pudo determinar las variables predictoras desde ninguna fuente.",
                                 id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                             )
                     except Exception as e:
@@ -158,6 +179,23 @@ if st.button("Explicar modelo"):
                             detalles=f"Error al recuperar variables desde configuración: {str(e)}",
                             id_sesion=session.obtener_estado("id_sesion", "sin_sesion")
                         )
+
+                # Avisar si hay diferencia entre configuración actual y lo que espera el modelo
+                vars_sesion = st.session_state.get('variables_predictoras', [])
+                if feature_names and vars_sesion and set(feature_names) != set(vars_sesion):
+                    diff_modelo = set(feature_names) - set(vars_sesion)
+                    diff_sesion = set(vars_sesion) - set(feature_names)
+                    msg = (
+                        f"⚠️ La configuración actual de predictores **difiere** de lo que el modelo espera. "
+                        f"La explicación se calculará con las **{len(feature_names)} variables del entrenamiento**.\n\n"
+                    )
+                    if diff_modelo:
+                        msg += f"- Variables que el modelo necesita (no en config actual): `{'`, `'.join(sorted(diff_modelo))}`\n"
+                    if diff_sesion:
+                        msg += f"- Variables en config actual (no en el modelo): `{'`, `'.join(sorted(diff_sesion))}`\n"
+                    msg += "\nSi querés explicar el modelo con la nueva selección, **reentrená el modelo** primero."
+                    st.warning(msg)
+
                 if feature_names:
                     try:
                         X_pre = X_pre[feature_names]

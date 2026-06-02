@@ -945,6 +945,36 @@ def main():
                         Intente ejecutar un nuevo benchmarking para acceder a todas las funcionalidades.
                         """)
                                
+            # Historial de ejecuciones
+            st.markdown("---")
+            with st.expander("📜 Historial de ejecuciones", expanded=False):
+                try:
+                    from src.database.modelos_db import obtener_historial_ejecuciones
+                    historial = obtener_historial_ejecuciones(
+                        id_usuario=session.obtener_estado("usuario_id", None),
+                        limit=20
+                    )
+                    if historial:
+                        df_hist = pd.DataFrame(historial)
+                        df_hist = df_hist.rename(columns={
+                            "id": "ID",
+                            "dataset_nombre": "Dataset / Objetivo",
+                            "tipo_problema": "Tipo",
+                            "variable_objetivo": "Variable objetivo",
+                            "modelo_ganador": "Mejor modelo",
+                            "metrica_nombre": "Métrica",
+                            "metrica_valor": "Valor",
+                            "modelos_exitosos": "Exitosos",
+                            "total_modelos": "Total",
+                            "duracion_segundos": "Duración (s)",
+                            "timestamp": "Fecha"
+                        })
+                        st.dataframe(df_hist, use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No hay ejecuciones registradas aún.")
+                except Exception as e:
+                    st.warning(f"No se pudo cargar el historial: {e}")
+
             # Opciones adicionales
             st.subheader("⏩ Próximos pasos")
             

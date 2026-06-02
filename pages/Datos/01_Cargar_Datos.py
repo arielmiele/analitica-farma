@@ -3,13 +3,11 @@ import os
 import sys
 from datetime import datetime
 
-# Agregar el directorio src al path para poder importar los módulos
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-# Importar módulos de la aplicación
 from src.audit.logger import setup_logger, log_audit
 from src.datos.cargador import cargar_datos_desde_csv, validar_dataframe_csv
-from src.snowflake.datasets_db import guardar_dataset, listar_datasets, obtener_dataset_por_id, cargar_dataset_fisico_por_id
+from src.database.datasets_db import guardar_dataset, listar_datasets, obtener_dataset_por_id, cargar_dataset_fisico, eliminar_dataset
 from src.state.session_manager import SessionManager
 
 # Centralizar obtención de usuario_id e id_sesion
@@ -33,7 +31,7 @@ if 'upload_timestamp' not in st.session_state:
 # Título y descripción de la página
 st.title("📊 1. Cargar Datos")
 
-st.write("Esta página permite cargar los datos necesarios para el análisis industrial. Puedes subir un nuevo archivo CSV o, próximamente, seleccionar un conjunto de datos disponible en Snowflake.")
+st.write("Esta página permite cargar los datos necesarios para el análisis industrial. Podés subir un nuevo archivo CSV o seleccionar un dataset guardado localmente.")
 
 # Función para cargar y procesar el CSV con caché para mejor rendimiento
 @st.cache_data(ttl=3600, show_spinner="Procesando archivo CSV...")
@@ -80,15 +78,20 @@ def procesar_archivo_csv(uploaded_file, **kwargs):
 st.header("1. Selección del origen de datos")
 tipo_carga = st.selectbox(
     "Selecciona el origen de los datos:",
-    options=["Selecciona una opción...", "Subir archivo CSV", "Seleccionar dataset de Snowflake"],
+    options=["Selecciona una opción...", "Subir archivo CSV", "Seleccionar dataset guardado localmente"],
     index=0,
-    help="Puedes subir un archivo CSV o seleccionar un dataset guardado en Snowflake."
+    help="Puedes subir un archivo CSV o seleccionar un dataset guardado localmente."
 )
 st.divider()
 
 if tipo_carga == "Subir archivo CSV":
     st.header("2. Subir archivo CSV")
     uploaded_file = st.file_uploader("Selecciona un archivo CSV", type=["csv"], key="file_uploader")
+    MAX_FILE_SIZE_MB = 500
+    if uploaded_file is not None and uploaded_file.size > MAX_FILE_SIZE_MB * 1024 * 1024:
+        st.error(f"⛔ El archivo es demasiado grande ({uploaded_file.size / (1024*1024):.1f} MB). El tamaño máximo permitido es {MAX_FILE_SIZE_MB} MB.")
+        uploaded_file = None
+
     cargar_btn = st.button("Cargar Datos", use_container_width=True, disabled=uploaded_file is None)
     if cargar_btn and uploaded_file is not None:
         with st.spinner("Cargando y procesando el archivo..."):
@@ -124,95 +127,36 @@ if tipo_carga == "Subir archivo CSV":
                 st.rerun()
     st.divider()
 
-elif tipo_carga == "Seleccionar dataset de Snowflake":
-    # Sección de selección de datasets almacenados en Snowflake
-    st.header("2. Selección de dataset en Snowflake")
-    usuario_creador = st.session_state.get("usuario_id", None)
-    # Listar datasets disponibles para el usuario actual
-    usuario_str = str(usuario_creador) if usuario_creador is not None else "anonimo"
-    datasets = listar_datasets(usuario=usuario_str, id_sesion=id_sesion)
+elif tipo_carga == "Seleccionar dataset guardado localmente":
+    # Sección de selección de datasets almacenados localmente
+    st.header("2. Selección de dataset local")
+    datasets = listar_datasets(id_usuario=usuario_id if isinstance(usuario_id, int) else None)
     if datasets:
-        # Construir opciones para el selectbox a partir de los datasets
-        opciones = {f"{ds['NOMBRE']} ({ds['ID_DATASET']})": ds['ID_DATASET'] for ds in datasets}
+        opciones = {f"{ds['nombre']} ({ds['id_dataset'][:8]}...)": ds['id_dataset'] for ds in datasets}
         seleccion = st.selectbox("Selecciona un dataset guardado:", options=list(opciones.keys()))
         if seleccion:
-            # Botón para cargar el dataset seleccionado
             if st.button("Cargar dataset seleccionado", use_container_width=True):
                 dataset_id = opciones[seleccion]
-                # Buscar metadatos del dataset en Snowflake usando los secretos
-                metadatos = None
-                try:
-                    metadatos = obtener_dataset_por_id(
-                        dataset_id,
-                        id_sesion=id_sesion,
-                        usuario=str(usuario_id)
-                    )
-                except Exception as e:
-                    st.error(f"Error al obtener metadatos del dataset: {str(e)}")
+                df = cargar_dataset_fisico(dataset_id)
+                if df is not None:
+                    st.session_state.df = df
+                    st.session_state.filename = seleccion
+                    st.session_state.upload_timestamp = datetime.now()
+                    st.session_state.metodo_carga = 'existente'
+                    st.success(f"Dataset '{seleccion}' cargado localmente.")
                     log_audit(
                         usuario=str(usuario_id),
-                        accion="ERROR_OBTENER_METADATOS",
+                        accion="CARGA_LOCAL",
                         entidad=seleccion,
                         id_entidad=str(dataset_id),
-                        detalles=f"Error al obtener metadatos: {str(e)}",
+                        detalles="Dataset cargado desde almacenamiento local.",
                         id_sesion=id_sesion
                     )
-                # Verificar que existan los metadatos necesarios para cargar la tabla física
-                if metadatos and 'ESQUEMA_FISICO' in metadatos and 'TABLA_FISICA' in metadatos:
-                    try:
-                        df = cargar_dataset_fisico_por_id(
-                            dataset_id,
-                            id_sesion=id_sesion,
-                            usuario=str(usuario_id)
-                        )
-                        if df is not None:
-                            st.session_state.df = df
-                            st.session_state.filename = seleccion
-                            st.session_state.upload_timestamp = datetime.now()
-                            st.session_state.metodo_carga = 'snowflake'  # <-- Origen Snowflake
-                            st.success(f"Dataset '{seleccion}' cargado desde Snowflake.")
-                            log_audit(
-                                usuario=str(usuario_id),
-                                accion="CARGA_SNOWFLAKE",
-                                entidad=seleccion,
-                                id_entidad=str(dataset_id),
-                                detalles="Dataset cargado desde Snowflake.",
-                                id_sesion=id_sesion
-                            )
-                            st.rerun()
-                        else:
-                            st.error("No se pudo cargar el dataset físico desde Snowflake.")
-                            log_audit(
-                                usuario=str(usuario_id),
-                                accion="ERROR_CARGA_SNOWFLAKE",
-                                entidad=seleccion,
-                                id_entidad=str(dataset_id),
-                                detalles="No se pudo cargar el dataset físico desde Snowflake.",
-                                id_sesion=id_sesion
-                            )
-                    except Exception as e:
-                        st.error(f"Error al cargar el dataset físico: {str(e)}")
-                        log_audit(
-                            usuario=str(usuario_id),
-                            accion="ERROR_CARGA_SNOWFLAKE",
-                            entidad=seleccion,
-                            id_entidad=str(dataset_id),
-                            detalles=f"Error al cargar dataset físico: {str(e)}",
-                            id_sesion=id_sesion
-                        )
+                    st.rerun()
                 else:
-                    st.error("No se encontraron los metadatos de la tabla física para este dataset en Snowflake.")
-                    log_audit(
-                        usuario=str(usuario_id),
-                        accion="ERROR_METADATOS_SNOWFLAKE",
-                        entidad=seleccion,
-                        id_entidad=str(dataset_id),
-                        detalles="No se encontraron los metadatos de la tabla física.",
-                        id_sesion=id_sesion
-                    )
+                    st.error("No se pudo cargar el dataset. El archivo puede haberse eliminado.")
     else:
-        # Si no hay datasets disponibles para el usuario
-        st.info("No hay datasets disponibles para este usuario.")
+        st.info("No hay datasets guardados localmente para este usuario.")
     st.divider()
 
 # 3. Vista previa del dataset cargado
@@ -227,107 +171,67 @@ if st.session_state.get("df") is not None:
         st.write(f"- **Filas:** {df.shape[0]}  |  **Columnas:** {df.shape[1]}")
         st.dataframe(df.head(10), use_container_width=True)
         st.divider()
-        # Opción para guardar el dataset cargado en Snowflake
+        # Opción para guardar el dataset cargado localmente
         if tipo_carga == "Subir archivo CSV" and st.session_state.get("df") is not None:
-            with st.expander("💾 Guardar dataset en Snowflake", expanded=False):
+            with st.expander("💾 Guardar dataset localmente", expanded=False):
                 nombre_dataset = st.text_input("Nombre del dataset", value=st.session_state.get("filename", ""))
                 descripcion_dataset = st.text_area("Descripción", value="")
-                guardar_btn = st.button("Guardar en Snowflake", use_container_width=True, disabled=not nombre_dataset)
+                guardar_btn = st.button("Guardar localmente", use_container_width=True, disabled=not nombre_dataset)
                 if guardar_btn:
-                    usuario_creador = str(st.session_state.get("usuario_id", "anonimo"))
+                    id_usuario_creador = st.session_state.get("usuario_id", 1)
                     df = st.session_state.df
                     if df is not None:
                         ok = guardar_dataset(
                             nombre_dataset,
                             descripcion_dataset,
-                            usuario_creador,
+                            id_usuario_creador,
                             df,
                             id_sesion=id_sesion,
                             usuario=str(usuario_id)
                         )
                         if ok:
-                            st.success("Dataset guardado exitosamente en Snowflake.")
+                            st.success("Dataset guardado exitosamente en almacenamiento local.")
                             log_audit(
                                 usuario=str(usuario_id),
                                 accion="GUARDAR_DATASET",
                                 entidad=nombre_dataset,
                                 id_entidad="",
-                                detalles="Dataset guardado exitosamente en Snowflake.",
+                                detalles="Dataset guardado localmente.",
                                 id_sesion=id_sesion
                             )
                         else:
-                            st.error("Error al guardar el dataset en Snowflake.")
-                            log_audit(
-                                usuario=str(usuario_id),
-                                accion="ERROR_GUARDAR_DATASET",
-                                entidad=nombre_dataset,
-                                id_entidad="",
-                                detalles="Error al guardar el dataset en Snowflake.",
-                                id_sesion=id_sesion
-                            )
+                            st.error("Error al guardar el dataset localmente.")
                     else:
-                        st.error("No hay datos cargados para guardar en Snowflake.")
-                        log_audit(
-                            usuario=str(usuario_id),
-                            accion="ERROR_GUARDAR_DATASET",
-                            entidad=nombre_dataset,
-                            id_entidad="",
-                            detalles="No hay datos cargados para guardar en Snowflake.",
-                            id_sesion=id_sesion
-                        )
+                        st.error("No hay datos cargados para guardar.")
 
-        # Mostrar datasets disponibles en Snowflake (listado y opción de eliminar)
-        with st.expander("📚 Datasets disponibles en Snowflake", expanded=False):
-            usuario_creador = st.session_state.get("usuario_id", None)
-            datasets = listar_datasets(
-                usuario=str(usuario_creador),
-                id_sesion=id_sesion
-            )
+        # Mostrar datasets disponibles localmente (listado y opción de eliminar)
+        with st.expander("📚 Datasets guardados localmente", expanded=False):
+            id_usuario_creador = st.session_state.get("usuario_id", None)
+            datasets = listar_datasets(id_usuario=id_usuario_creador)
             if datasets:
                 for ds in datasets:
-                    st.write(f"- **{ds['NOMBRE']}** ({ds['ID_DATASET']}) - {ds['DESCRIPCION']}")
-                    # Opción para eliminar el dataset físico (solo si tiene metadatos de tabla física)
-                    if 'TABLA_FISICA' in ds and 'ESQUEMA_FISICO' in ds:
-                        eliminar_btn = st.button(
-                            f"🗑️ Eliminar '{ds['TABLA_FISICA']}' del esquema '{ds['ESQUEMA_FISICO']}'",
-                            key=f"eliminar_{ds['ID_DATASET']}"
-                        )
-                        if eliminar_btn:
-                            from src.snowflake.datasets_db import eliminar_tabla_fisica
-                            confirmar = st.checkbox(
-                                f"Confirmar eliminación de {ds['TABLA_FISICA']} ({ds['ID_DATASET']})",
-                                key=f"confirmar_{ds['ID_DATASET']}"
+                    st.write(f"- **{ds['nombre']}** — {ds.get('descripcion', '')} | Filas: {ds.get('filas', '?')} | Columnas: {ds.get('columnas', '?')}")
+                    eliminar_btn = st.button(
+                        f"🗑️ Eliminar '{ds['nombre']}'",
+                        key=f"eliminar_{ds['id_dataset']}"
+                    )
+                    if eliminar_btn:
+                        ok = eliminar_dataset(ds['id_dataset'])
+                        if ok:
+                            st.success(f"Dataset '{ds['nombre']}' eliminado.")
+                            log_audit(
+                                usuario=str(usuario_id),
+                                accion="ELIMINAR_DATASET",
+                                entidad=ds['nombre'],
+                                id_entidad=str(ds['id_dataset']),
+                                detalles="Dataset eliminado del almacenamiento local.",
+                                id_sesion=id_sesion
                             )
-                            if confirmar:
-                                ok = eliminar_tabla_fisica(
-                                    ds['TABLA_FISICA'],
-                                    esquema=ds['ESQUEMA_FISICO'],
-                                    id_sesion=id_sesion,
-                                    usuario=str(usuario_id)
-                                )
-                                if ok:
-                                    st.success(f"Tabla '{ds['TABLA_FISICA']}' eliminada correctamente.")
-                                    log_audit(
-                                        usuario=str(usuario_id),
-                                        accion="ELIMINAR_DATASET",
-                                        entidad=ds['NOMBRE'],
-                                        id_entidad=str(ds['ID_DATASET']),
-                                        detalles=f"Tabla '{ds['TABLA_FISICA']}' eliminada del esquema '{ds['ESQUEMA_FISICO']}'",
-                                        id_sesion=id_sesion
-                                    )
-                                    st.rerun()
-                                else:
-                                    st.error(f"No se pudo eliminar la tabla '{ds['TABLA_FISICA']}'. Verifica permisos y ownership en Snowflake.")
-                                    log_audit(
-                                        usuario=str(usuario_id),
-                                        accion="ERROR_ELIMINAR_DATASET",
-                                        entidad=ds['NOMBRE'],
-                                        id_entidad=str(ds['ID_DATASET']),
-                                        detalles=f"No se pudo eliminar la tabla '{ds['TABLA_FISICA']}' del esquema '{ds['ESQUEMA_FISICO']}'",
-                                        id_sesion=id_sesion
-                                    )
+                            st.rerun()
+                        else:
+                            st.error(f"No se pudo eliminar el dataset '{ds['nombre']}'.")
             else:
-                st.info("No hay datasets disponibles para este usuario.")
+                st.info("No hay datasets guardados localmente para este usuario.")
     # Botones de acción al final de la página
     st.divider()
     col1, col2 = st.columns(2)
