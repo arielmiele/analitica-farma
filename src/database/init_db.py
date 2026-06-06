@@ -1,10 +1,10 @@
 """
-Inicialización del esquema SQLite y datos iniciales.
-Crea todas las tablas y el usuario administrador por defecto si la base está vacía.
+Inicialización del esquema y datos iniciales.
+Soporta SQLite (local) y Supabase (cloud) según DB_BACKEND.
 """
 import bcrypt
 from datetime import datetime
-from src.database.sqlite_conn import get_connection
+from src.database.backend import get_backend
 
 _CREATE_TABLES = """
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -109,16 +109,42 @@ CREATE TABLE IF NOT EXISTS historial_ejecuciones (
 
 def init_db() -> None:
     """Crea las tablas y el usuario admin por defecto si no existen."""
+    if get_backend() == "supabase":
+        _init_supabase()
+    else:
+        _init_sqlite()
+
+
+def _init_sqlite() -> None:
+    """Inicialización SQLite: crea tablas y usuario admin."""
+    from src.database.sqlite_conn import get_connection
     conn = get_connection()
     try:
         conn.executescript(_CREATE_TABLES)
         conn.commit()
-        _crear_usuario_admin(conn)
+        _crear_usuario_admin_sqlite(conn)
     finally:
         conn.close()
 
 
-def _crear_usuario_admin(conn) -> None:
+def _init_supabase() -> None:
+    """Inicialización Supabase: verifica conexión y crea usuario admin si tabla vacía."""
+    from src.database.supabase_conn import get_client
+    client = get_client()
+    # Verificar si hay usuarios; si no, crear admin
+    result = client.table("usuarios").select("id", count="exact").limit(1).execute()
+    if result.count == 0:
+        hash_pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
+        client.table("usuarios").insert({
+            "nombre": "Administrador",
+            "email": "admin@analitica-farma.com",
+            "hash_password": hash_pw,
+            "rol": "admin",
+            "activo": 1,
+        }).execute()
+
+
+def _crear_usuario_admin_sqlite(conn) -> None:
     """Crea el usuario administrador inicial si la tabla está vacía."""
     row = conn.execute("SELECT COUNT(*) as cnt FROM usuarios").fetchone()
     if row["cnt"] == 0:

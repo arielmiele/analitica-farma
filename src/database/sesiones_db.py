@@ -1,18 +1,42 @@
 """
-Operaciones sobre la tabla sesiones en SQLite.
+Operaciones sobre la tabla sesiones.
+Soporta SQLite (local) y Supabase (cloud) según DB_BACKEND.
 """
 import uuid
 from datetime import datetime
 from typing import Optional, Dict
-from src.database.sqlite_conn import get_connection
+from src.database.backend import get_backend
 
 
 def crear_sesion(id_usuario: int) -> str:
-    """
-    Genera un UUID de sesión, lo registra en SQLite y lo devuelve.
-    Si ya existe una sesión activa para ese usuario, la reutiliza.
-    """
+    """Genera un UUID de sesión, lo registra y lo devuelve."""
     id_sesion = str(uuid.uuid4())
+    if get_backend() == "supabase":
+        _crear_sesion_supabase(id_sesion, id_usuario)
+    else:
+        _crear_sesion_sqlite(id_sesion, id_usuario)
+    return id_sesion
+
+
+def cerrar_sesion(id_sesion: str) -> None:
+    """Marca la sesión como INACTIVA y registra la fecha de cierre."""
+    if get_backend() == "supabase":
+        _cerrar_sesion_supabase(id_sesion)
+    else:
+        _cerrar_sesion_sqlite(id_sesion)
+
+
+def obtener_sesion(id_sesion: str) -> Optional[Dict]:
+    """Devuelve los datos de la sesión o None si no existe."""
+    if get_backend() == "supabase":
+        return _obtener_sesion_supabase(id_sesion)
+    return _obtener_sesion_sqlite(id_sesion)
+
+
+# ── Implementación SQLite ─────────────────────────────────────────────────────
+
+def _crear_sesion_sqlite(id_sesion: str, id_usuario: int) -> None:
+    from src.database.sqlite_conn import get_connection
     conn = get_connection()
     try:
         conn.execute(
@@ -23,11 +47,10 @@ def crear_sesion(id_usuario: int) -> str:
         conn.commit()
     finally:
         conn.close()
-    return id_sesion
 
 
-def cerrar_sesion(id_sesion: str) -> None:
-    """Marca la sesión como INACTIVA y registra la fecha de cierre."""
+def _cerrar_sesion_sqlite(id_sesion: str) -> None:
+    from src.database.sqlite_conn import get_connection
     conn = get_connection()
     try:
         conn.execute(
@@ -39,8 +62,8 @@ def cerrar_sesion(id_sesion: str) -> None:
         conn.close()
 
 
-def obtener_sesion(id_sesion: str) -> Optional[Dict]:
-    """Devuelve los datos de la sesión o None si no existe."""
+def _obtener_sesion_sqlite(id_sesion: str) -> Optional[Dict]:
+    from src.database.sqlite_conn import get_connection
     conn = get_connection()
     try:
         row = conn.execute(
@@ -50,3 +73,35 @@ def obtener_sesion(id_sesion: str) -> Optional[Dict]:
         return dict(row) if row else None
     finally:
         conn.close()
+
+
+# ── Implementación Supabase ───────────────────────────────────────────────────
+
+def _crear_sesion_supabase(id_sesion: str, id_usuario: int) -> None:
+    from src.database.supabase_conn import get_client
+    client = get_client()
+    client.table("sesiones").insert({
+        "id_sesion": id_sesion,
+        "id_usuario": id_usuario,
+        "estado": "ACTIVA",
+    }).execute()
+
+
+def _cerrar_sesion_supabase(id_sesion: str) -> None:
+    from src.database.supabase_conn import get_client
+    client = get_client()
+    client.table("sesiones").update({
+        "estado": "INACTIVA",
+        "fecha_fin": datetime.now().isoformat(),
+    }).eq("id_sesion", id_sesion).execute()
+
+
+def _obtener_sesion_supabase(id_sesion: str) -> Optional[Dict]:
+    from src.database.supabase_conn import get_client
+    client = get_client()
+    result = client.table("sesiones") \
+        .select("id_sesion, id_usuario, fecha_inicio, fecha_fin, estado") \
+        .eq("id_sesion", id_sesion).limit(1).execute()
+    if result.data:
+        return result.data[0]
+    return None

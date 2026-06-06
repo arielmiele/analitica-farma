@@ -57,7 +57,7 @@ fastapi==0.115.14
 filelock==3.18.0
 Flask==3.1.1
 fonttools==4.58.4
-fpdf==1.7.2
+fpdf2==2.8.3
 gitdb==4.0.12
 GitPython==3.1.44
 google-auth==2.40.3
@@ -183,3 +183,4 @@ win32_setctime==1.2.0
 xgboost==3.0.2
 yellowbrick==1.5
 zipp==3.23.0
+supabase==2.31.0
