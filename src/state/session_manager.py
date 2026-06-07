@@ -205,6 +205,7 @@ class SessionManager:
     def logout() -> None:
         """
         Cierra la sesión del usuario actual, actualiza el estado en SQLite y limpia session_state.
+        También invalida la cookie de streamlit-authenticator.
         """
         id_sesion = st.session_state.get("id_sesion", None)
         if id_sesion:
@@ -212,11 +213,19 @@ class SessionManager:
                 cerrar_sesion(id_sesion)
             except Exception:
                 pass
-            if "id_sesion" in st.session_state:
-                del st.session_state["id_sesion"]
-        for key in list(st.session_state.keys()):
-            if (isinstance(key, str) and key.startswith("usuario_")) or key in ["authenticated", "current_user"]:
+
+        # Limpiar keys de streamlit-authenticator (cookie + auth state)
+        auth_keys = ["authentication_status", "username", "name", "logout",
+                     "id_sesion", "authenticated", "current_user"]
+        for key in auth_keys:
+            if key in st.session_state:
                 del st.session_state[key]
+
+        # Limpiar keys de usuario
+        for key in list(st.session_state.keys()):
+            if isinstance(key, str) and key.startswith("usuario_"):
+                del st.session_state[key]
+
         st.session_state.logged_in = False
     
     @staticmethod

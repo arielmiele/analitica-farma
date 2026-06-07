@@ -43,7 +43,7 @@ authenticator = stauth.Authenticate(
     credentials=credentials,
     cookie_name="analitica_farma_auth",
     cookie_key="analitica_farma_local_secret_key",
-    cookie_expiry_days=1,
+    cookie_expiry_days=0,
 )
 
 col1, col2, col3 = st.columns([1, 2, 1])
