@@ -6,23 +6,23 @@ Aplicación para analizar datos productivos en la industria farmacéutica y reco
 
 ## Tabla de Historias de Usuario Implementadas y Planificadas
 
-| HU   | Descripción breve                                                        | Criterios de aceptación principales                | Archivos/módulos clave                  |
-|------|--------------------------------------------------------------------------|---------------------------------------------------|-----------------------------------------|
-| HU1  | Carga de datos desde CSV o Snowflake                                     | Importar, validar y almacenar datasets             | src/datos/cargador.py, pages/Datos/01_Cargar_Datos.py |
-| HU2  | Configuración del problema y variables                                   | Selección de variable objetivo y predictores       | src/datos/cargador.py, pages/Datos/02_Configurar_Datos.py |
-| HU3  | Validación automática de tipos, fechas y unidades                        | Detectar y sugerir correcciones                    | src/datos/validador.py, pages/Datos/03_Validar_Datos.py |
-| HU4  | Transformación y limpieza de datos                                       | Aplicar transformaciones, gestionar duplicados     | src/datos/transformador.py, src/datos/limpiador.py |
-| HU5  | Análisis de calidad y resumen de datos                                   | Estadísticas, visualización de calidad             | src/datos/analizador.py, pages/Datos/04_Analizar_Calidad.py |
-| HU6  | Entrenamiento automático de modelos ML                                   | Benchmarking, manejo de errores, persistencia      | src/modelos/entrenador.py, pages/Machine Learning/04_Entrenar_Modelos.py |
-| HU7  | Evaluación detallada de modelos                                          | Métricas, validación cruzada, comparación          | src/modelos/evaluador.py, pages/Machine Learning/05_Evaluar_Modelos.py |
-| HU8  | Recomendación automática del mejor modelo                                | Selección por criterios, justificación             | src/modelos/recomendador.py, pages/Machine Learning/06_Recomendar_Modelo.py |
-| HU9  | Visualización avanzada y comparación de modelos                          | Matriz confusión, ROC, PR, residuos, exportación   | src/modelos/visualizador.py, pages/Machine Learning/05_Evaluar_Modelos.py |
-| HU10 | Validación estricta Model-View, separación lógica negocio/UI             | Lógica de negocio solo en modelos, UI solo presentación | src/modelos/evaluador.py, src/ui/, pages/ |
-| HU11 | Curvas de aprendizaje y validación cruzada avanzada                      | Curvas learning, análisis de overfitting           | src/modelos/evaluador.py, src/modelos/visualizador.py |
-| HU12 | Interpretabilidad avanzada (SHAP, importancia de variables)              | Explicaciones automáticas, visualización de importancia | src/modelos/explicador.py, src/modelos/visualizador.py |
-| HU13 | Generación y descarga de reportes completos (PDF)                        | Reporte PDF con resultados, gráficos y recomendaciones | src/reportes/generador.py, pages/Reportes/07_Reporte.py |
-| HU14 | Optimización automática de hiperparámetros                               | Búsqueda grid/bayesiana, comparación de resultados | src/modelos/entrenador.py, src/modelos/configurador.py |
-| HU15 | Integración MLOps y versionado de modelos                                | Seguimiento de experimentos, versionado, auditoría | src/modelos/modelo_serializer.py, src/audit/logger.py |
+| HU    | Descripción breve                                                          | Criterios de aceptación principales                | Archivos/módulos clave |
+|-------|---------------------------------------------------------------------------|----------------------------------------------------|----|
+| HU1   | Carga de datos desde CSV o Snowflake                                      | Importar, validar y almacenar datasets             | src/datos/cargador.py, pages/Datos/01_Cargar_Datos.py |
+| HU2   | Configuración del problema y variables                                    | Selección de variable objetivo y predictores       | src/datos/cargador.py, pages/Datos/02_Configurar_Datos.py |
+| HU3   | Validación automática de tipos, fechas y unidades                         | Detectar y sugerir correcciones                    | src/datos/validador.py, pages/Datos/03_Validar_Datos.py |
+| HU4   | Transformación y limpieza de datos                                        | Aplicar transformaciones, gestionar duplicados     | src/datos/transformador.py, src/datos/limpiador.py |
+| HU5   | Análisis de calidad y resumen de datos                                    | Estadísticas, visualización de calidad             | src/datos/analizador.py, pages/Datos/04_Analizar_Calidad.py |
+| HU6   | Entrenamiento automático de modelos ML                                    | Benchmarking, manejo de errores, persistencia      | src/modelos/entrenador.py, pages/Machine Learning/04_Entrenar_Modelos.py |
+| HU7   | Evaluación detallada de modelos                                           | Métricas, validación cruzada, comparación          | src/modelos/evaluador.py, pages/Machine Learning/05_Evaluar_Modelos.py |
+| HU8   | Recomendación automática del mejor modelo                                 | Selección por criterios, justificación             | src/modelos/recomendador.py, pages/Machine Learning/06_Recomendar_Modelo.py |
+| HU9   | Visualización avanzada y comparación de modelos                           | Matriz confusión, ROC, PR, residuos, exportación   | src/modelos/visualizador.py, pages/Machine Learning/05_Evaluar_Modelos.py |
+| HU10  | Validación estricta Model-View, separación lógica negocio/UI              | Lógica de negocio solo en modelos, UI solo presentación | src/modelos/evaluador.py, src/ui/, pages/ |
+| HU11  | Curvas de aprendizaje y validación cruzada avanzada                       | Curvas learning, análisis de overfitting           | src/modelos/evaluador.py, src/modelos/visualizador.py |
+| HU12  | Interpretabilidad avanzada (SHAP, importancia de variables)               | Explicaciones automáticas, visualización de importancia | src/modelos/explicador.py, src/modelos/visualizador.py |
+| HU13  | Generación y descarga de reportes completos (PDF)                         | Reporte PDF con resultados, gráficos y recomendaciones | src/reportes/generador.py, pages/Reportes/07_Reporte.py |
+| HU14  | Optimización automática de hiperparámetros                                | Búsqueda grid/bayesiana, comparación de resultados | src/modelos/entrenador.py, src/modelos/configurador.py |
+| HU15  | Integración MLOps y versionado de modelos                                 | Seguimiento de experimentos, versionado, auditoría | src/modelos/modelo_serializer.py, src/audit/logger.py |
 
 ---
 
