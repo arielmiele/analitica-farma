@@ -20,7 +20,7 @@
 # fpdf
 # hashlib
 # sqlalchemy
-# snowflake
+# supabase
 # scipy
 # scikit-learn
 # sqlite3

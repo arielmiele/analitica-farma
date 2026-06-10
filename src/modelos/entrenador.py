@@ -421,7 +421,7 @@ def guardar_resultados_benchmarking(
     db_path: Optional[str] = None
 ) -> int:
     """
-    Guarda los resultados del benchmarking en Snowflake.
+    Guarda los resultados del benchmarking en el backend activo.
     
     Args:
         resultados (Dict): Resultados del benchmarking
@@ -482,7 +482,7 @@ def guardar_resultados_benchmarking(
             accion="ERROR_GUARDAR_BENCHMARKING",
             entidad="entrenador",
             id_entidad="N/A",
-            detalles=f"Error al guardar resultados de benchmarking en Snowflake: {str(e)}",
+            detalles=f"Error al guardar resultados de benchmarking en backend activo: {str(e)}",
             id_sesion=id_sesion
         )
         raise

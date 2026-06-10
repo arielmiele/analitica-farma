@@ -31,7 +31,7 @@ def deslogueo():
     st.write("Esta aplicación te permite analizar datos de procesos farmacéuticos, entrenar modelos de machine learning y generar reportes de manera ágil e intuitiva.")
     st.subheader("📋 Flujo de trabajo recomendado:")
     st.markdown("""
-    1. **Cargar Datos**: Importa datos desde CSV o conecta con Snowflake
+    1. **Cargar Datos**: Importa datos desde CSV y persiste en el backend activo (SQLite/Supabase)
     2. **Validar y Analizar Datos**: Revisa estructura, tipos, nulos, duplicados y estadísticas
     3. **Configurar Datos**: Define la variable objetivo, predictores y tipo de problema
     4. **Entrenar Modelos**: Ejecuta benchmarking automático de algoritmos de ML
